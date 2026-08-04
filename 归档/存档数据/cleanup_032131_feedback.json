@@ -1,0 +1,90 @@
+{
+  "version": "2.0.0",
+  "state": {
+    "_fmt": 2,
+    "rows": 3,
+    "cols": 3,
+    "board": [
+      [
+        2,
+        1,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        0
+      ]
+    ],
+    "source": [
+      [
+        "manual",
+        "manual",
+        ""
+      ],
+      [
+        "auto",
+        "",
+        ""
+      ],
+      [
+        "auto",
+        "",
+        ""
+      ]
+    ],
+    "config": {
+      "2": 0,
+      "3": 1,
+      "4": 0,
+      "5": 0
+    },
+    "confirmed": [],
+    "tools": {
+      "bigDetect": 2,
+      "smallDetect": 9,
+      "sonarCoins": 3070
+    },
+    "events": [],
+    "useHistoryPrior": false,
+    "historyWeight": 0.2,
+    "consecutiveMisses": 1
+  },
+  "actions": [],
+  "reasoning": [
+    {
+      "time": "2026-07-31T19:10:06.821Z",
+      "detail": "候选780 剩船5 推荐(5,5)"
+    },
+    {
+      "time": "2026-07-31T19:13:12.366Z",
+      "detail": "候选6 剩船1 推荐(1,1)"
+    },
+    {
+      "time": "2026-07-31T19:13:35.662Z",
+      "detail": "候选4 剩船1 推荐(1,2)"
+    },
+    {
+      "time": "2026-07-31T19:14:07.591Z",
+      "detail": "候选3 剩船1 推荐(2,1) 必然2格"
+    },
+    {
+      "time": "2026-07-31T19:14:15.391Z",
+      "detail": "候选3 剩船1 推荐(2,1) 必然1格"
+    },
+    {
+      "time": "2026-07-31T19:14:16.166Z",
+      "detail": "候选2 剩船1 推荐(3,1) 必然1格"
+    }
+  ],
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
+  "viewport": {
+    "w": 1661,
+    "h": 943
+  }
+}

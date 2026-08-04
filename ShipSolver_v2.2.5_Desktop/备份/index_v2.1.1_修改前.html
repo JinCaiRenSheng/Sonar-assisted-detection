@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17365f">
+<title>ShipSolver v2.1.1 桌面版</title>
+<style>
+/* ================================================================
+   CSS 变量 —— 统一管理所有颜色和尺寸
+   ================================================================ */
+:root{
+  --bg1:#15345f;--bg2:#245b9e;--panel:rgba(255,255,255,.085);
+  --border:rgba(255,255,255,.14);--text:#eef5ff;--muted:#b9c8db;
+  --primary:#448bd7;--danger:#b94c48;--warn:#b76b28;--ok:#2f9e55;
+  --cell-size:44px;--radius:12px;--gap:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;max-width:100%;overflow-x:hidden}
+body{
+  min-height:100vh;padding:clamp(8px,1.4vw,16px);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  color:var(--text);background:linear-gradient(135deg,var(--bg1),var(--bg2));
+}
+button,input,select,textarea{font:inherit}
+button{
+  border:0;border-radius:7px;padding:.5em .85em;background:var(--primary);
+  color:#fff;font-weight:700;cursor:pointer;touch-action:manipulation;min-height:34px
+}
+button:hover{filter:brightness(1.1)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.secondary{background:#697480} button.warn{background:var(--warn)} button.danger{background:var(--danger)}
+.container{max-width:1280px;margin:auto}
+h1{font-size:clamp(20px,3vw,30px);text-align:center;margin:0 0 3px}
+.subtitle{text-align:center;font-size:clamp(11px,1.5vw,13px);opacity:.78;margin-bottom:10px}
+.panel{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:clamp(8px,1vw,12px);backdrop-filter:blur(8px);box-shadow:0 8px 24px rgba(0,0,0,.09)
+}
+.controls{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;
+  font-size:clamp(11px,1.2vw,13px)
+}
+.controls input[type=number]{width:52px}
+input,select,textarea{
+  border:1px solid rgba(255,255,255,.24);border-radius:6px;
+  background:rgba(0,0,0,.2);color:#fff;padding:5px 7px
+}
+.layout{display:grid;grid-template-columns:minmax(480px,1fr) minmax(235px,275px);gap:12px;align-items:start}
+.grid-area{display:grid;grid-template-columns:92px minmax(0,1fr);gap:8px;align-items:stretch}
+.legend-panel{display:flex;flex-direction:column;gap:5px;font-size:11px}
+.legend-panel label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sq{width:15px;height:15px;border:1px solid rgba(255,255,255,.2);border-radius:3px;flex:0 0 auto}
+.hint{font-size:10px;color:var(--muted);line-height:1.5}
+.quick-btn{margin-top:auto;padding-top:8px;border-top:1px solid rgba(255,255,255,.1)}
+.quick-btn button{width:100%;font-size:11px}
+.grid-wrap{
+  min-height:520px;overflow:auto;display:flex;align-items:center;justify-content:center;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch
+}
+#gridViewport{position:relative;display:flex;align-items:center;justify-content:center;min-width:100%;min-height:100%}
+.diamond{position:relative;flex:0 0 auto;transform-origin:center center}
+.cell{
+  position:absolute;width:var(--cell-size);height:var(--cell-size);
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.14);background:rgba(69,103,154,.42);
+  cursor:pointer;user-select:none;touch-action:manipulation;transition:filter .12s,transform .12s;
+  font-size:clamp(8px,1vw,13px)
+}
+.cell:hover{filter:brightness(1.14)}
+.cell span{transform:rotate(-45deg)}
+.cell .coord{position:absolute;top:1px;left:1px;font-size:10px;opacity:.9;pointer-events:none;line-height:1;white-space:nowrap;color:#fff;font-weight:600;text-shadow:0 0 3px rgba(0,0,0,.9),0 0 1px #000;z-index:2}
+.cell .mark{font-size:14px;line-height:1}
+.cell.ship{background:#d6534f;color:white;font-weight:800}
+.cell.empty{background:rgba(0,0,0,.62);color:#b7c1cc}
+.cell.locked{background:repeating-linear-gradient(45deg,#464f5b 0,#464f5b 5px,#596473 5px,#596473 10px)}
+.cell.possible{box-shadow:inset 0 0 0 2px rgba(255,215,0,.55)}
+.cell.high{box-shadow:inset 0 0 0 3px rgba(255,195,0,.95)}
+.cell.top2{box-shadow:inset 0 0 0 2px rgba(255,195,0,.55)}
+.cell.top3{box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.cell.forced{box-shadow:inset 0 0 0 3px #78ff9a}
+.cell.big-area{box-shadow:inset 0 0 0 2px rgba(90,176,255,.7)}
+.cell.selected{outline:3px solid #fff;z-index:4}
+.sidebar{display:flex;flex-direction:column;gap:10px}
+.accordion-header{
+  display:flex;justify-content:space-between;align-items:center;cursor:pointer;
+  padding:6px 8px;background:rgba(255,255,255,.05);border-radius:5px;font-weight:700;font-size:13px
+}
+.accordion-body{display:block;padding:7px 6px 2px}
+.progress{display:flex;gap:5px;flex-wrap:wrap}
+.badge{padding:4px 7px;border-radius:5px;background:rgba(0,0,0,.24);font-size:11px}
+.badge.done{background:var(--ok)}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px}
+.status-grid div,.event{padding:5px 7px;border-radius:5px;background:rgba(0,0,0,.2)}
+.suggest{border:1px solid #ffd95a;border-radius:7px;padding:8px;background:rgba(255,215,0,.08);font-size:11px;line-height:1.55}
+.event{font-size:10px;margin-top:5px;line-height:1.45}
+.config-item{display:inline-flex;align-items:center;gap:2px;padding:2px 4px;border-radius:4px;background:rgba(0,0,0,.2)}
+.config-item input{width:34px;padding:2px 3px}
+.modal-bg{
+  display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.68);
+  align-items:center;justify-content:center;padding:12px
+}
+.modal-bg.show{display:flex}
+.modal{width:min(720px,96vw);max-height:90vh;overflow:auto;background:#182b40;border:1px solid var(--border);border-radius:13px;padding:16px}
+.modal h3{margin-top:0}.btn-row{display:flex;gap:6px;flex-wrap:wrap}.save-row{display:flex;gap:7px;align-items:center;padding:7px;border:1px solid var(--border);border-radius:7px;margin-top:6px}.save-main{flex:1}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:200;background:rgba(0,0,0,.86);padding:9px 16px;border-radius:8px;font-size:12px;max-width:90%;text-align:center}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🚢 ShipSolver v2.1.1 桌面版</h1>
+<div class="subtitle">多策略评分 · 信息增益 · 自动确认</div>
+
+<div class="panel controls" id="topControls">
+  <button class="secondary" onclick="App.undo()">↶撤销</button>
+  <button onclick="App.openBoardSettings()">棋盘与配置</button>
+  <button class="secondary" onclick="App.resetGame()">重置</button>
+  <button class="secondary" onclick="App.openSaves()">💾存读档</button>
+  <button class="secondary" onclick="App.editResources()">✏️资源</button>
+  <button class="secondary" onclick="App.openSettings()">⚙️设置</button>
+  <button class="secondary" onclick="App.exportFeedback()">📤反馈</button>
+  <button class="secondary" onclick="App.showHelp()">❓帮助</button>
+  <span id="resourceInfo" class="badge"></span>
+</div>
+
+<div class="layout">
+  <div class="grid-area">
+    <div class="panel legend-panel">
+      <label><span class="sq" style="background:rgba(69,103,154,.42)"></span>未知</label>
+      <label><span class="sq" style="background:#d6534f"></span>船</label>
+      <label><span class="sq" style="background:rgba(0,0,0,.62)"></span>空</label>
+      <label><span class="sq" style="background:#596473"></span>锁定</label>
+      <label><span class="sq" style="box-shadow:inset 0 0 0 2px gold"></span>可能</label>
+      <label><span class="sq" style="box-shadow:inset 0 0 0 3px #78ff9a"></span>必然船</label>
+      <div class="hint">左键：船/取消<br>右键：空/取消<br>Shift+左键：选中整船<br>右键船格：确认(需封闭)<br>大探测：左键船 右键空</div>
+      <div class="quick-btn"><button onclick="App.confirmSelectedShip()">🔒确认整船</button></div>
+    </div>
+    <div class="panel grid-wrap" id="gridWrap"><div id="gridViewport"><div id="grid" class="diamond"></div></div></div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <div class="accordion-header">🚢 进度与状态</div>
+      <div class="accordion-body"><div id="progress" class="progress"></div><div id="status" class="status-grid" style="margin-top:6px"></div><div id="autosaveInfo" class="hint" style="margin-top:6px"></div></div>
+    </div>
+    <div class="panel">
+      <div class="accordion-header">💡 探测建议</div>
+      <div class="accordion-body"><div id="suggestion" class="suggest"></div><div id="smallRecommend" class="suggest" style="margin-top:6px"></div></div>
+    </div>
+    <div class="panel">
+      <div class="accordion-header">🔎 探测操作</div>
+      <div class="accordion-body">
+        <div id="bigSessionStatus" class="suggest">尚未开始本次大探测。</div>
+        <div class="btn-row" style="margin-top:6px">
+          <button id="startBigBtn" onclick="App.startBig()">开始大探测</button>
+          <button id="confirmBigBtn" onclick="App.confirmBig()" disabled>确认本次</button>
+          <button id="cancelBigBtn" class="secondary" onclick="App.cancelBig()" disabled>取消本次</button>
+          <button class="secondary" onclick="App.clearEvents()">清空历史</button>
+        </div>
+        <div id="bigRecommend" class="suggest" style="margin-top:6px"></div><div id="events"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="saveModal" class="modal-bg" onclick="if(event.target===this)App.closeModal('saveModal')"><div class="modal">
+<h3>💾 存读档</h3>
+<div class="btn-row" style="margin-bottom:8px">
+  <label>当前存档期：
+    <select id="savePeriodSelect" onchange="App.switchPeriod(this.value); renderSaves();"></select>
+  </label>
+  <button class="secondary" onclick="App.openSettings()">期管理</button>
+</div>
+<div class="btn-row"><input id="saveName" placeholder="存档名称"><button onclick="App.saveCurrent()">保存</button><button class="secondary" onclick="App.exportAll()">导出全部</button><button class="secondary" onclick="document.getElementById('importFile').click()">导入</button><input id="importFile" hidden type="file" accept=".json" onchange="App.importJSON(event)"></div><div id="saveList"></div><div class="hint" style="margin-top:6px">📋 下面列出<b>所有期</b>的存档（📌=当前期，🕘=往期），可直接读取/删除任意存档。新保存会存入上方所选期。导出全部=备份所有期，导入=恢复备份，不丢历史数据。</div><div style="text-align:right;margin-top:10px"><button class="secondary" onclick="App.closeModal('saveModal')">关闭</button></div>
+</div></div>
+
+<div id="settingsModal" class="modal-bg" onclick="if(event.target===this)App.closeModal('settingsModal')"><div class="modal">
+<h3>⚙️ 设置</h3>
+<div style="margin-bottom:10px">
+  存档期 <select id="periodSelect" onchange="App.switchPeriod(this.value)"></select>
+  <button onclick="App.newPeriod()">＋新建</button>
+  <button class="danger" onclick="App.deletePeriod()">删除当前期</button>
+</div>
+<div style="margin-bottom:10px;border-top:1px solid #333;padding-top:8px">
+  <b>期合并</b>：把 <select id="mergeFromSelect"></select> 并入 <select id="mergeToSelect"></select>
+  <button class="secondary" onclick="App.mergePeriod()">合并 →</button>
+  <div class="hint">把来源期的全部存档并入目标期，重名跳过不覆盖，来源期保留（可再手动删除）。</div>
+</div>
+<label><input id="useHistoryPrior" type="checkbox" onchange="App.setHistory(this.checked)"> 启用历史先验</label>
+<div style="margin-top:10px">历史权重 <input id="historyWeight" type="range" min="0" max="50" value="20" oninput="App.setHistoryWeight(this.value)"> <span id="weightDisplay">0.20</span></div>
+<div class="btn-row" style="margin-top:12px"><button class="danger" onclick="App.clearAllSaves()">清空所有存档</button><button class="secondary" onclick="App.closeModal('settingsModal')">关闭</button></div>
+</div></div>
+
+<div id="boardModal" class="modal-bg" onclick="if(event.target===this)App.closeModal('boardModal')"><div class="modal">
+<h3>棋盘与船只配置</h3>
+<div class="btn-row"><label>行 <input id="modalRows" type="number" min="3" max="10"></label><label>列 <input id="modalCols" type="number" min="3" max="10"></label></div>
+<div id="modalConfig" style="margin-top:10px"></div>
+<div class="btn-row" style="margin-top:12px"><button onclick="App.applyBoardSettings()">应用并重置</button><button class="secondary" onclick="App.closeModal('boardModal')">取消</button></div>
+</div></div>
+
+<div id="helpModal" class="modal-bg" onclick="if(event.target===this)App.closeModal('helpModal')"><div class="modal">
+<h3>❓帮助</h3><div style="line-height:1.75;font-size:13px">
+<b>基本操作：</b>左键标船，右键标空，右键船格两端封闭时确认整船。<br>
+<b>确认整船：</b>点击「棋盘与配置」旁按钮，以最近标记的船格定位整船，无需手动选择。<br>
+<b>小探测：</b>进入模式后点击格子选择"船/空"。<br>
+<b>大探测：</b>开始后连续标记多个结果，确认时统一写入。本地工具不消耗次数，上传服务器才消耗。<br>
+<b>推理引擎：</b>多策略评分（覆盖计数+信息增益+边缘聚焦+历史先验），自动确认唯一船与必然碎片。<br>
+<b>高置信格：</b>金色描边表示出现在 &gt;60% 方案中的格子，优先探测。<br><br>
+<b>💾 存档：</b><br>
+• 存档按「期」分组（设置或存读档弹窗中切换）<br>
+• 每期可存多盘，列表显示时间/尺寸/配置<br>
+• 「导出全部」备份所有期，「导入」恢复<br>
+• 自动兼容旧版存档格式，不丢数据<br><br>
+<b>📋 日志与反馈：</b><br>
+• 顶栏「反馈」导出 JSON：含当前盘面+操作日志+推理日志+推荐统计<br>
+• 操作日志记录每次标记及是否采纳推荐<br>
+• 推理日志记录候选数、推荐坐标、必然格，供优化算法<br><br>
+<b>快捷键：</b>Ctrl+Z 撤销。
+</div><div style="text-align:right;margin-top:10px"><button class="secondary" onclick="App.closeModal('helpModal')">关闭</button></div>
+</div></div>
+
+<script>
+/* ================================================================
+   ShipSolver v2.1.1 —— 智能推理引擎
+
+   写给不熟悉编程的读者：
+   这个程序像一个团队，分成 5 个角色：
+
+   State（记录员）—— 记住棋盘状态、资源数量
+   Solver（大脑）  —— 根据已知信息推理船在哪
+   Render（画家）  —— 把数据画到屏幕上
+   Storage（档案室）—— 保存/读取进度
+   UI（前台）      —— 处理鼠标点击等用户操作
+   ================================================================ */
+const App = (function() {
+'use strict';
+
+const VERSION = '2.1.1';
+const SAVE_FORMAT = 2;
+const SAVE_KEY = 'shipsolver_saves';
+const AUTO_KEY = 'shipsolver_autosave_v2_0_0';
+
+// 方向数组：DIR4=上下左右，DIR8=八个方向（多了四个对角）
+const DIR4 = [[-1,0],[1,0],[0,-1],[0,1]];
+const DIR8 = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
+// ====== 全局状态 S ======
+const S = {
+    rows: 10, cols: 10,
+    board: [],       // 0=未知, 1=空, 2=船
+    source: [],      // 来源标记：manual/auto/big/small_ship/small_empty
+    config: {5:1, 4:1, 3:1, 2:2},
+    confirmed: [],
+    tools: {bigDetect:2, smallDetect:9, sonarCoins:2540},
+    undo: [], redo: [],
+    events: [], logs: {actions:[], reasoning:[]},
+    bigHistory: [],  // 历次大探测确认的格子
+    selected: null, big: null, lastMark: null,
+    currentSaveName: null,  // 当前盘面对应的存档名
+    useHistoryPrior: false, historyWeight: 0.2,
+    currentPeriod: '默认',
+    consecutiveMisses: 0,
+    stats: {recGiven:0, recFollowed:0, recHit:0},
+    derived: {}
+};
+
+const $ = id => document.getElementById(id);
+const key = (r, c) => r + ',' + c;
+const inb = (r, c) => r >= 0 && r < S.rows && c >= 0 && c < S.cols;
+const clone = x => JSON.parse(JSON.stringify(x));
+
+function snap() {
+    return {
+        _fmt: SAVE_FORMAT,
+        rows: S.rows, cols: S.cols,
+        board: clone(S.board), source: clone(S.source),
+        config: clone(S.config), confirmed: [...S.confirmed],
+        tools: clone(S.tools), events: clone(S.events),
+        useHistoryPrior: S.useHistoryPrior, historyWeight: S.historyWeight,
+        consecutiveMisses: S.consecutiveMisses
+    };
+}
+function restore(x) {
+    // 防护：校验数据完整性，不合法则拒绝
+    if (!x || typeof x.rows !== 'number' || typeof x.cols !== 'number' ||
+        x.rows < 3 || x.rows > 10 || x.cols < 3 || x.cols > 10 ||
+        !Array.isArray(x.board) || x.board.length !== x.rows) {
+        console.warn('ShipSolver: 存档数据损坏，使用新棋盘');
+        initFresh(); return;
+    }
+    Object.assign(S, {
+        rows: x.rows, cols: x.cols,
+        board: clone(x.board),
+        source: Array.isArray(x.source) && x.source.length === x.rows ? clone(x.source) : Array.from({length: x.rows}, () => Array(x.cols).fill('')),
+        config: clone(x.config || {2:1}), confirmed: [...(x.confirmed || [])],
+        tools: clone(x.tools || {bigDetect:2, smallDetect:9, sonarCoins:2540}),
+        events: clone(x.events || []),
+        useHistoryPrior: !!x.useHistoryPrior, historyWeight: x.historyWeight ?? 0.2,
+        consecutiveMisses: x.consecutiveMisses || 0
+    });
+    compute(); render();
+}
+function push() { S.undo.push(snap()); if (S.undo.length > 100) S.undo.shift(); S.redo = []; }
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
+function logAct(type, detail) { S.logs.actions.push({time: new Date().toISOString(), type, detail}); if (S.logs.actions.length > 200) S.logs.actions.shift(); }
+function logRea(detail) { let last = S.logs.reasoning[S.logs.reasoning.length-1]; if (last && last.detail === detail) return; S.logs.reasoning.push({time: new Date().toISOString(), detail}); if (S.logs.reasoning.length > 100) S.logs.reasoning.shift(); }
+function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+
+// ==================================================================
+// 求解器（SOLVER）—— 程序的大脑
+//
+// 推理流程：
+//   已知事实 → 识别船块 → 锁定格子 → 枚举所有合法方案
+//   → 多策略评分 → 必然船推导 → 大探测区域 → 自动确认
+// ==================================================================
+
+// [1] 识别船块：把相邻的"船"格子合并成船块
+function blocks() {
+    const vis = Array.from({length: S.rows}, () => Array(S.cols).fill(false)), out = [];
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+        if (S.board[r][c] !== 2 || vis[r][c]) continue;
+        let st = [[r, c]], cells = [];
+        while (st.length) {
+            let [x, y] = st.pop();
+            if (!inb(x, y) || vis[x][y] || S.board[x][y] !== 2) continue;
+            vis[x][y] = true; cells.push([x, y]);
+            DIR4.forEach(d => st.push([x + d[0], y + d[1]]));
+        }
+        let rs = cells.map(p => p[0]), cs = cells.map(p => p[1]);
+        out.push({cells, len: cells.length, h: new Set(rs).size === 1, v: new Set(cs).size === 1,
+            sig: cells.map(p => key(...p)).sort().join('|'),
+            minR: Math.min(...rs), maxR: Math.max(...rs), minC: Math.min(...cs), maxC: Math.max(...cs)});
+    }
+    return out;
+}
+
+// [2] 锁定格子 + 计算完成进度
+function locksAndProgress(bs) {
+    const locks = new Map(), progress = {}; Object.keys(S.config).forEach(k => progress[k] = 0);
+    const completed = [];
+    // a) 船块侧面锁定：长度≥2的直线船块，侧面不能有船
+    bs.forEach(b => {
+        if (b.len >= 2 && (b.h || b.v)) {
+            b.cells.forEach(([r, c]) => {
+                let ds = b.h ? [[-1, 0], [1, 0]] : [[0, -1], [0, 1]];
+                ds.forEach(d => { let x = r + d[0], y = c + d[1]; if (inb(x, y) && S.board[x][y] !== 2) locks.set(key(x, y), '船块侧面锁定'); });
+            });
+        }
+    });
+    // b) 确认/封闭船锁定
+    bs.forEach(b => {
+        if (!(b.h || b.v) || !S.config[b.len]) return;
+        let confirmed = S.confirmed.includes(b.sig);
+        let ends = false;
+        if (b.h) ends = (b.minC === 0 || S.board[b.minR][b.minC - 1] === 1) && (b.maxC === S.cols - 1 || S.board[b.maxR][b.maxC + 1] === 1);
+        if (b.v) ends = (b.minR === 0 || S.board[b.minR - 1][b.minC] === 1) && (b.maxR === S.rows - 1 || S.board[b.maxR + 1][b.minC] === 1);
+        if ((confirmed || ends) && (progress[b.len] || 0) < S.config[b.len]) {
+            progress[b.len]++; completed.push(b);
+            // 两端封闭的船自动加入确认列表（之前只加了进度，没真正确认）
+            if (ends && !confirmed) { S.confirmed.push(b.sig); }
+            b.cells.forEach(([r, c]) => DIR8.forEach(d => { let x = r + d[0], y = c + d[1]; if (inb(x, y) && S.board[x][y] !== 2) locks.set(key(x, y), '完成船锁定'); }));
+        }
+    });
+    return {locks, progress, completed};
+}
+
+// [3]+[4] 枚举所有合法摆放方案
+function enumerate(locks, remaining) {
+    const out = [];
+    function valid(cells) {
+        let set = new Set(cells.map(p => key(...p)));
+        for (let [r, c] of cells) {
+            if (!inb(r, c) || S.board[r][c] === 1 || locks.has(key(r, c))) return false;
+            for (let [dr, dc] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+                let x = r + dr, y = c + dc;
+                if (inb(x, y) && S.board[x][y] === 2 && !set.has(key(x, y))) return false;
+            }
+        }
+        for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+            if (S.board[r][c] === 2 && !set.has(key(r, c)))
+                { let adj = cells.some(([x, y]) => Math.abs(x - r) + Math.abs(y - c) === 1); if (adj) return false; }
+        return true;
+    }
+    remaining.forEach(len => {
+        for (let r = 0; r < S.rows; r++) for (let c = 0; c <= S.cols - len; c++) { let a = Array.from({length: len}, (_, i) => [r, c + i]); if (valid(a)) out.push({len, cells: a}); }
+        for (let c = 0; c < S.cols; c++) for (let r = 0; r <= S.rows - len; r++) { let a = Array.from({length: len}, (_, i) => [r + i, c]); if (valid(a)) out.push({len, cells: a}); }
+    });
+    return out;
+}
+
+// [5] 多策略评分
+function scoreCells(placements, locks, bs, completed) {
+    const rows = S.rows, cols = S.cols;
+    const cover = Array.from({length: rows}, () => Array(cols).fill(0));
+    const scores = Array.from({length: rows}, () => Array(cols).fill(0));
+    const gain = Array.from({length: rows}, () => Array(cols).fill(0));
+
+    // 策略1：覆盖计数
+    placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) cover[r][c]++; }));
+
+    // 策略2：信息增益 —— 探这里能排除多少可能性
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        if (S.board[r][c] !== 0 || locks.has(key(r, c))) continue;
+        let yes = 0, no = 0;
+        placements.forEach(p => { let hit = p.cells.some(q => q[0] === r && q[1] === c); if (hit) yes++; else no++; });
+        let total = yes + no;
+        if (total) { let balance = Math.min(yes, no) / Math.max(1, total); gain[r][c] = balance * 10 + cover[r][c] * 0.2; }
+    }
+
+    // 策略3：边缘聚焦 —— 连续探空后优先探边缘
+    const edgeDensity = Array.from({length: rows}, () => Array(cols).fill(0));
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        if (S.board[r][c] !== 0) continue;
+        let ec = 0; DIR8.forEach(([dr, dc]) => { let nr = r + dr, nc = c + dc; if (inb(nr, nc) && S.board[nr][nc] === 1) ec++; });
+        edgeDensity[r][c] = ec;
+    }
+    let edgeFactor = 0.5 + Math.min(S.consecutiveMisses, 5) * 0.3;
+    // 小盘自适应：≤5×5 时边缘策略不可靠，降低权重
+    const boardArea = rows * cols;
+    const smallBoardScale = boardArea <= 25 ? boardArea / 25 : 1;
+    edgeFactor *= smallBoardScale;
+
+    // 策略4：对角线惩罚 —— 孤立船的对角线不太可能有船
+    const isolatedShips = new Set();
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        if (S.board[r][c] === 2) { let nb = false; DIR4.forEach(([dr, dc]) => { if (inb(r + dr, c + dc) && S.board[r + dr][c + dc] === 2) nb = true; }); if (!nb) isolatedShips.add(key(r, c)); }
+    }
+
+    // 策略4.5：靠近未确认船块的格子加分（帮助拼合碎片）
+    const unconfirmedBlocks = bs.filter(b => !completed.some(x => x.sig === b.sig));
+    const nearUnconfirmed = Array.from({length: rows}, () => Array(cols).fill(0));
+    const isSmall = boardArea <= 25;
+    for (let ub of unconfirmedBlocks) {
+        for (let [ur, uc] of ub.cells) {
+            let baseBonus = isSmall ? 6 : 3;  // 小盘邻近碎片信号更强
+            DIR4.forEach(([dr, dc]) => {
+                let nr = ur + dr, nc = uc + dc;
+                if (inb(nr, nc) && S.board[nr][nc] === 0 && !locks.has(key(nr, nc)))
+                    nearUnconfirmed[nr][nc] += baseBonus;
+            });
+            // 同线延伸方向再额外加分
+            let extBonus = isSmall ? 5 : 2;
+            if (ub.h) {
+                [[0,-1],[0,1]].forEach(([dr,dc]) => {
+                    let nr = ur + dr, nc = uc + dc;
+                    if (inb(nr, nc) && S.board[nr][nc] === 0 && !locks.has(key(nr, nc)))
+                        nearUnconfirmed[nr][nc] += extBonus;
+                });
+            }
+            if (ub.v) {
+                [[-1,0],[1,0]].forEach(([dr,dc]) => {
+                    let nr = ur + dr, nc = uc + dc;
+                    if (inb(nr, nc) && S.board[nr][nc] === 0 && !locks.has(key(nr, nc)))
+                        nearUnconfirmed[nr][nc] += extBonus;
+                });
+            }
+            // 小盘：单格碎片也推测延伸方向（还未形成直线但可能是船的开头）
+            if (isSmall && !ub.h && !ub.v) {
+                [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dr,dc]) => {
+                    let nr = ur + dr, nc = uc + dc;
+                    if (inb(nr, nc) && S.board[nr][nc] === 0 && !locks.has(key(nr, nc)))
+                        nearUnconfirmed[nr][nc] += extBonus;
+                });
+            }
+        }
+    }
+
+    // 综合评分
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        if (S.board[r][c] !== 0 || locks.has(key(r, c))) continue;
+        let s;
+        if (boardArea <= 25) {
+            // 小盘：覆盖计数主导，碎片邻近高权重，忽略边缘策略
+            s = cover[r][c] * 2.0 + nearUnconfirmed[r][c] * 2.5 + gain[r][c] * 0.2;
+        } else {
+            s = cover[r][c] + gain[r][c] + edgeDensity[r][c] * 1.2 * edgeFactor + nearUnconfirmed[r][c];
+        }
+        for (let k of isolatedShips) { let [sr, sc] = k.split(',').map(Number); if (Math.abs(r - sr) === 1 && Math.abs(c - sc) === 1) s = Math.max(0, s - 2.0); }
+        scores[r][c] = s;
+    }
+
+    // 策略5：历史先验（可选）
+    if (S.useHistoryPrior) {
+        let prior = computeHistoryPrior();
+        if (prior) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+            if (S.board[r][c] === 0 && !locks.has(key(r, c))) scores[r][c] += (prior[r][c] || 0) * S.historyWeight * 10;
+    }
+
+    let max = 0, best = null, top3 = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        max = Math.max(max, scores[r][c]);
+        if (S.board[r][c] === 0 && !locks.has(key(r, c))) {
+            let obj = {r, c, score: scores[r][c], gain: gain[r][c], cover: cover[r][c]};
+            if (!best || scores[r][c] > best.score) best = obj;
+            top3.push(obj);
+        }
+    }
+    top3.sort((a, b) => b.score - a.score);
+    top3 = top3.slice(0, 3);
+    const normScores = scores.map(row => row.map(v => max ? v / max : 0));
+    return {cover, scores: normScores, rawScores: scores, best, gain, top3};
+}
+
+function computeHistoryPrior() {
+    let store; try { store = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); } catch(e) { return null; }
+    const prior = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+    let total = 0;
+    let saves = store._periods ? allSavesFlat() : store;  // 兼容旧格式
+    for (let name in saves) {
+        if (name.startsWith('_')) continue;
+        let st = saves[name]?.state || saves[name];
+        if (!st || st.rows !== S.rows || st.cols !== S.cols) continue;
+        if (JSON.stringify(st.config) !== JSON.stringify(S.config)) continue;
+        for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+            if (st.board?.[r]?.[c] === 2) { prior[r][c]++; total++; }
+    }
+    if (total === 0) return null;
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) prior[r][c] /= total;
+    return prior;
+}
+
+// [6] 必然船：所有方案都经过的格子
+function findForced(placements, locks) {
+    const forced = new Set();
+    if (!placements.length) return forced;
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+        if (S.board[r][c] !== 0 || locks.has(key(r, c))) continue;
+        if (placements.filter(p => p.cells.some(q => q[0] === r && q[1] === c)).length === placements.length)
+            forced.add(key(r, c));
+    }
+    return forced;
+}
+
+// [7] 大探测推荐 = 最高价值单点（大探测不探测周围九格）
+function findBigArea(scores, bs, completed, best) {
+    // 直接复用单点最佳推荐（与探测推荐一致）
+    return best || null;
+}
+
+// [8] 自动确认唯一船（仅精确匹配——不延伸碎片）
+function autoConfirm(bs, placements, progress) {
+    let added = false;
+    bs.forEach(b => {
+        if (!(b.h || b.v) || !S.config[b.len] || S.confirmed.includes(b.sig)) return;
+        if ((progress[b.len] || 0) >= S.config[b.len]) return;
+        let candidates = placements.filter(p => b.cells.every(cell => p.cells.some(q => q[0] === cell[0] && q[1] === cell[1])));
+        if (!candidates.length) return;
+        // 所有覆盖该船块的候选方案长度和位置完全一致 → 唯一确定
+        let exact = candidates.filter(p => p.cells.length === b.cells.length && p.cells.every(q => b.cells.some(c => c[0] === q[0] && c[1] === q[1])));
+        if (exact.length === candidates.length) { S.confirmed.push(b.sig); added = true; logRea('自动确认长度' + b.len + '的船'); }
+    });
+    return added;
+}
+
+// 主推理函数：串联全部步骤
+function compute() {
+    const bs = blocks(), lp = locksAndProgress(bs);
+    const remaining = []; Object.entries(S.config).forEach(([l, n]) => { for (let i = 0; i < n - (lp.progress[l] || 0); i++) remaining.push(+l); });
+    const placements = enumerate(lp.locks, remaining);
+    const scored = scoreCells(placements, lp.locks, bs, lp.completed);
+    const forced = findForced(placements, lp.locks);
+    const bigArea = findBigArea(scored.scores, bs, lp.completed, scored.best);
+
+    let loopCount = 0;
+    while (autoConfirm(bs, placements, lp.progress) && loopCount < 20) {
+        loopCount++;
+        const bs2 = blocks(), lp2 = locksAndProgress(bs2);
+        Object.assign(lp, lp2); bs.splice(0, bs.length, ...bs2);
+    }
+
+    // 碎片合并推断：对每个未确认船块，若仅一种剩余船型能容纳且方案唯一，则强制
+    let fragChanged = true;
+    while (fragChanged) {
+        fragChanged = false;
+        const bsCur = blocks(), lpCur = locksAndProgress(bsCur);
+        const remCur = []; Object.entries(S.config).forEach(([l, n]) => { for (let i = 0; i < n - (lpCur.progress[l] || 0); i++) remCur.push(+l); });
+        const ublocks = bsCur.filter(b => !lpCur.completed.some(x => x.sig === b.sig) && (b.h || b.v) && S.config[b.len] && !S.confirmed.includes(b.sig));
+        for (let ub of ublocks) {
+            const matchLens = [...new Set(remCur)].filter(len => len >= ub.len);
+            if (matchLens.length !== 1) continue;  // 仅一种剩余船型可容纳才推断
+            let mlen = matchLens[0];
+            let covering = placements.filter(p => p.cells.length === mlen && ub.cells.every(cell => p.cells.some(q => q[0] === cell[0] && q[1] === cell[1])));
+            if (covering.length !== 1) continue;
+            let unique = covering[0];
+            let merged = blocks().find(x => x.len === mlen && x.cells.every(p => unique.cells.some(q => q[0] === p[0] && q[1] === p[1])));
+            if (merged && !S.confirmed.includes(merged.sig)) {
+                // 填满缺失格
+                let filled = false;
+                for (let [cr, cc] of unique.cells) if (S.board[cr][cc] === 0) { S.board[cr][cc] = 2; S.source[cr][cc] = 'auto'; filled = true; }
+                S.confirmed.push(merged.sig); fragChanged = true;
+                logRea('碎片合并：长度' + ub.len + '→' + mlen + '的船' + (filled ? '（补格）' : ''));
+            }
+        }
+    }
+
+    // 重新计算 lp（因为确认状态可能变了）和 remaining
+    const bsFinal = blocks(), lpFinal = locksAndProgress(bsFinal);
+    Object.assign(lp, lpFinal); bs.splice(0, bs.length, ...bsFinal);
+    remaining.length = 0;
+    Object.entries(S.config).forEach(([l, n]) => { for (let i = 0; i < n - (lp.progress[l] || 0); i++) remaining.push(+l); });
+
+    if (forced.size) forced.forEach(k => { let [r, c] = k.split(',').map(Number); if (S.board[r][c] === 0) { S.board[r][c] = 2; S.source[r][c] = 'auto'; } });
+    const gameFinished = remaining.length === 0;
+
+    // 推理摘要：记录关键决策结果
+    let rea = S.rows + 'x' + S.cols + ' 候选' + placements.length + ' 剩船' + remaining.length;
+    if (scored.best) {
+        let br = scored.best.r, bc = scored.best.c;
+        rea += ' 推荐(' + (br+1) + ',' + (bc+1) + ')';
+        // 附推荐理由（该格得分的主要来源）
+        let parts = [];
+        if (scored.best.cover > 0) parts.push('覆盖' + scored.best.cover);
+        if (scored.best.gain > 0) parts.push('增益' + (scored.best.gain*10).toFixed(0));
+        if (parts.length) rea += '[' + parts.join('+') + ']';
+    }
+    if (forced.size) rea += ' 必然' + forced.size + '格';
+
+    // 高置信格：出现在 >60% 方案中但非100%（供参考，不自动标记）
+    const highConf = new Set();
+    if (placements.length >= 2) {
+        const threshold = Math.ceil(placements.length * 0.6);
+        const count = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+        placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) count[r][c]++; }));
+        for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+            if (S.board[r][c] === 0 && !lp.locks.has(key(r, c)) && count[r][c] >= threshold && count[r][c] < placements.length)
+                highConf.add(key(r, c));
+    }
+    if (highConf.size) rea += ' 高置信' + highConf.size + '格';
+    if (gameFinished) rea += ' ✓完成';
+    logRea(rea);
+
+    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced, highConf, bigArea, gameFinished};
+}
+
+// ==================================================================
+// 渲染（RENDER）—— 把数据画到屏幕上
+// ==================================================================
+function responsiveCell() {
+    const wrap = $('gridWrap');
+    if (!wrap) return 30;  // 兜底：容器未就绪
+    let w = Math.max(260, wrap.clientWidth - 20), h = Math.max(260, (window.innerHeight < 600 ? window.innerHeight - 90 : window.innerHeight * 0.64));
+    let size = Math.floor(Math.min(w / (S.rows + S.cols) * 1.38, h / (S.rows + S.cols) * 1.38));
+    return Math.max(22, Math.min(56, size || 30));
+}
+
+function renderGrid() {
+    const grid = $('grid'); grid.innerHTML = '';
+    let cell = responsiveCell(); document.documentElement.style.setProperty('--cell-size', cell + 'px');
+    const w = (S.cols + S.rows) * cell / Math.SQRT2, h = w;
+    grid.style.width = w + 'px'; grid.style.height = h + 'px';
+
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+        let d = document.createElement('div'); d.className = 'cell';
+        let x = (c - r + S.rows - 1) * cell / Math.SQRT2, y = (c + r) * cell / Math.SQRT2;
+        d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.transform = 'rotate(45deg)';
+        let v = S.board[r][c], k = key(r, c);
+        if (v === 2) d.classList.add('ship');
+        if (v === 1) d.classList.add('empty');
+        if (S.derived.locks?.has(k) && v !== 2) d.classList.add('locked');
+        // 游戏完成时不显示任何推荐高亮
+        if (!S.derived.gameFinished && !S.derived.locks?.has(k)) {
+            if ((S.derived.scores?.[r]?.[c] || 0) > 0.45 && v === 0) d.classList.add('possible');
+            if (S.derived.best && S.derived.best.r === r && S.derived.best.c === c) d.classList.add('high');
+            if (S.derived.top3?.[1] && S.derived.top3[1].r === r && S.derived.top3[1].c === c) d.classList.add('top2');
+            if (S.derived.top3?.[2] && S.derived.top3[2].r === r && S.derived.top3[2].c === c) d.classList.add('top3');
+            if (S.derived.bigArea && S.derived.bigArea.r === r && S.derived.bigArea.c === c) d.classList.add('big-area');
+        }
+        if (S.derived.forced?.has(k)) d.classList.add('forced');
+        if (S.derived.highConf?.has(k)) d.classList.add('possible');
+        if (S.selected === k) d.classList.add('selected');
+        d.dataset.r = r; d.dataset.c = c;
+        d.innerHTML = '<span class="coord">' + (r + 1) + ',' + (c + 1) + '</span><span class="mark">' + (v === 2 ? '●' : v === 1 ? '×' : '') + '</span>';
+        grid.appendChild(d);
+    }
+}
+
+function render() {
+    // 第1步：立即画棋盘（最重要，放最前面，确保不受后续错误影响）
+    renderGrid();
+
+    // 第2步：更新文字面板（用 try 包裹，单个面板失败不影响其他）
+    if (!S.derived || !S.derived.scores) { compute(); }
+    try {
+    $('resourceInfo').textContent = '大探测:' + S.tools.bigDetect + '｜小探测:' + S.tools.smallDetect + '｜声呐币:' + S.tools.sonarCoins;
+    } catch(e) { console.error('ShipSolver: 控制栏渲染失败', e); }
+    try {
+    $('progress').innerHTML = Object.keys(S.config).sort((a, b) => b - a).map(l => '<span class="badge ' + ((S.derived.progress?.[l] || 0) >= S.config[l] ? 'done' : '') + '">' + l + '格 ' + (S.derived.progress?.[l] || 0) + '/' + S.config[l] + '</span>').join('');
+    $('status').innerHTML = '<div>候选方案：' + (S.derived.placements?.length || 0) + '</div><div>剩余船数：' + (S.derived.remaining?.length || 0) + '</div><div>已知船格：' + S.board.flat().filter(x => x === 2).length + '</div><div>已知空格：' + S.board.flat().filter(x => x === 1).length + '</div><div style="grid-column:1/-1">当前存档：<b>' + (S.currentSaveName || '未命名') + '</b></div>' + (S.derived.gameFinished ? '<div style="grid-column:1/-1;color:#78ff9a">🎉 全部完成！</div>' : '');
+    } catch(e) { console.error('ShipSolver: 状态面板渲染失败', e); }
+    try {
+    $('suggestion').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">🎉 全部船只已确认，无需继续探测。</b>' : S.derived.best ? '推荐探测（前3）：<br>' + (S.derived.top3 || [S.derived.best]).map((t, i) => '<b style="color:' + (i===0?'#ffd95a':i===1?'#e8c96a':'#cfd8e3') + '">' + (i+1) + '. (' + (t.r + 1) + ',' + (t.c + 1) + ')</b> 覆盖' + t.cover + ' 增益' + (t.gain*10).toFixed(0)).join('<br>') : '暂无可推荐格子';    if (S.derived.best && !S.derived.gameFinished) S.stats.recGiven++;    } catch(e) { console.error('ShipSolver: 建议面板渲染失败', e); }
+    try {
+    $('smallRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">全部船只已确认 ✓</b>' : (S.derived.forced?.size || S.derived.highConf?.size) ? (S.derived.forced?.size ? '必然船格：' + [...S.derived.forced].map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') + (S.derived.highConf?.size ? '<br>' : '') : '') + (S.derived.highConf?.size ? '高置信格（>60%）：' + [...S.derived.highConf].slice(0,6).map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') : '') : '当前无必然船格';
+    } catch(e) { console.error('ShipSolver: 必然船面板渲染失败', e); }
+    try {
+    $('bigRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">所有船只已确认，无需大探测。</b>' : S.derived.bigArea ? '推荐大探测点：<b>(' + (S.derived.bigArea.r + 1) + ',' + (S.derived.bigArea.c + 1) + ')</b><br>覆盖方案：' + S.derived.bigArea.cover + '｜信息增益：' + (S.derived.bigArea.gain * 10).toFixed(0) : '暂无大探测推荐';
+    } catch(e) { console.error('ShipSolver: 大探测面板渲染失败', e); }
+    try {
+    $('events').innerHTML = S.events.slice(-8).reverse().map(e => '<div class="event">' + e.time + '｜' + e.text + '</div>').join('');
+    $('bigSessionStatus').textContent = S.derived.gameFinished ? '🎉 本局已完成，无需继续探测。' : S.big ? '本次大探测已暂存 ' + Object.keys(S.big.changes).length + ' 个结果。' : '尚未开始本次大探测。';
+    $('startBigBtn').disabled = !!S.big || S.derived.gameFinished; $('confirmBigBtn').disabled = !S.big || S.derived.gameFinished; $('cancelBigBtn').disabled = !S.big;
+    } catch(e) { console.error('ShipSolver: 探测面板渲染失败', e); }
+    try {
+        localStorage.setItem(AUTO_KEY, JSON.stringify(snap()));
+        S.lastAutosave = new Date().toLocaleTimeString('zh-CN', {hour12: false});
+    } catch(e) { console.error('ShipSolver: 自动保存失败', e); }
+    try {
+        let asEl = $('autosaveInfo');
+        if (asEl) asEl.textContent = '自动保存：' + (S.lastAutosave || '已就绪');
+    } catch(e) {}
+}
+
+// ==================================================================
+// 事件处理
+// ==================================================================
+function setupGridEvents() {
+    const grid = $('grid');
+    grid.addEventListener('click', function(e) {
+        let cell = e.target.closest('.cell'); if (!cell) return;
+        cellClick(e, parseInt(cell.dataset.r), parseInt(cell.dataset.c));
+    });
+    grid.addEventListener('contextmenu', function(e) {
+        let cell = e.target.closest('.cell'); if (!cell) return;
+        e.preventDefault();
+        let r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+        // 大探测：右键=录入空（事实）
+        if (S.big) {
+            let k = key(r, c), cur = S.big.changes[k] || 0;
+            if (cur === 1) { delete S.big.changes[k]; toast('取消该格'); }
+            else { S.big.changes[k] = 1; toast('大探测暂存：空'); }
+            render(); return;
+        }
+        // 右键已标记的船格 → 安全确认整船（仅两端封闭时允许）
+        if (S.board[r][c] === 2) {
+            let b = blocks().find(b => b.cells.some(p => p[0] === r && p[1] === c));
+            if (b && (b.h || b.v) && S.config[b.len]) {
+                if (S.confirmed.includes(b.sig)) { toast('该船已确认'); return; }
+                // 检查两端是否封闭
+                let ends = false;
+                if (b.h) ends = (b.minC === 0 || S.board[b.minR][b.minC - 1] === 1) && (b.maxC === S.cols - 1 || S.board[b.maxR][b.maxC + 1] === 1);
+                if (b.v) ends = (b.minR === 0 || S.board[b.minR - 1][b.minC] === 1) && (b.maxR === S.rows - 1 || S.board[b.maxR + 1][b.minC] === 1);
+                if (!ends) {
+                    toast('⚠️ 该船块两端未封闭，可能可以延伸。请确认边界后再试，或用「确认整船」按钮强制确认。');
+                    return;
+                }
+                S.confirmed.push(b.sig);
+                compute(); render();
+                toast('已确认长度' + b.len + '的船');
+                logAct('confirm_right', '右键确认：长度' + b.len);
+                return;
+            }
+        }
+        // 否则标空
+        mark(r, c, 1);
+    });
+}
+
+function cellClick(e, r, c) {
+    if (S.big) {
+        // 大探测是录入事实：左键=船，再次点击取消
+        let k = key(r, c), cur = S.big.changes[k] || 0;
+        if (cur === 2) { delete S.big.changes[k]; toast('取消该格'); }
+        else { S.big.changes[k] = 2; toast('大探测暂存：船'); }
+        render(); return;
+    }
+    if (e.shiftKey) { let b = blocks().find(b => b.cells.some(p => p[0] === r && p[1] === c)); S.selected = b ? b.sig : null; renderGrid(); return; }
+    mark(r, c, 2);
+}
+
+function mark(r, c, val) {
+    // 防护1：游戏已全部完成，不能再修改
+    if (S.derived.gameFinished) { toast('所有船只已确认，棋盘锁定'); return; }
+    // 防护2：锁定格不能改
+    if (S.derived.locks?.has(key(r, c)) && S.board[r][c] === 0) { toast('该格已逻辑锁定'); return; }
+    // 防护3：已确认船上的格子不能改
+    if (S.board[r][c] === 2) {
+        let onShip = blocks().find(b => b.cells.some(p => p[0] === r && p[1] === c));
+        if (onShip && S.confirmed.includes(onShip.sig)) { toast('该格属于已确认的船，不能修改'); return; }
+    }
+
+    // 对角规则：标记为"船"时，四个对角方向不能已有船
+    if (val === 2 && S.board[r][c] !== 2) {
+        const DIAG = [[-1,-1],[-1,1],[1,-1],[1,1]];
+        for (let [dr, dc] of DIAG) {
+            let nr = r + dr, nc = c + dc;
+            if (inb(nr, nc) && S.board[nr][nc] === 2) {
+                toast('不能标记为船：与 (' + (nr+1) + ',' + (nc+1) + ') 对角相邻，违反规则');
+                return;
+            }
+        }
+    }
+
+    push();
+    // 记录操作前的推荐（用于追踪推荐准确率）
+    let prevRec = S.derived.best ? {r: S.derived.best.r, c: S.derived.best.c} : null;
+    let cur = S.board[r][c]; S.board[r][c] = (cur === val) ? 0 : val;
+    S.source[r][c] = S.board[r][c] ? 'manual' : '';
+    if (val === 2 && S.board[r][c] === 2) { S.tools.sonarCoins += 10; S.consecutiveMisses = 0; S.lastMark = [r, c]; }
+    if (val === 1 && S.board[r][c] === 1) { S.consecutiveMisses++; if (S.consecutiveMisses >= 3) toast('已连续 ' + S.consecutiveMisses + ' 次探空，引擎聚焦边缘'); }
+    compute(); render();
+
+    // 追踪：是否采纳了推荐
+    let followed = false;
+    if (prevRec && r === prevRec.r && c === prevRec.c) {
+        S.stats.recFollowed++;
+        if (S.board[r][c] === 2) S.stats.recHit++;
+        followed = true;
+    }
+
+    // 防护3：标船后检测是否为孤儿格（不被任何合法方案覆盖）
+    if (S.board[r][c] === 2) {
+        let covered = S.derived.placements?.some(p => p.cells.some(q => q[0] === r && q[1] === c));
+        if (!covered) {
+            // 找具体原因：所在船块长度是否匹配剩余配置
+            let b = blocks().find(b => b.cells.some(p => p[0] === r && p[1] === c));
+            let reason = '';
+            if (b) {
+                if (!(b.h || b.v)) reason = '该格未与相邻船格连成直线，无法组成船';
+                else if (!S.config[b.len]) reason = '该块长度' + b.len + '不在剩余船只配置中';
+                else reason = '该块与已有标记冲突，无法放入任何合法方案';
+            } else { reason = '孤立单格，无法组成船'; }
+            toast('⚠️ (' + (r+1) + ',' + (c+1) + ') 不合法：' + reason);
+        }
+    }
+
+    // 小盘简化推理：标船后若该碎片在当前长度下只剩唯一方案，自动补全
+    if (S.board[r][c] === 2 && S.rows * S.cols <= 36) {
+        let b = blocks().find(b => b.cells.some(p => p[0] === r && p[1] === c));
+        if (b && (b.h || b.v) && S.config[b.len] && !S.confirmed.includes(b.sig) &&
+            (S.derived.progress?.[b.len] || 0) < S.config[b.len]) {
+            let candidates = S.derived.placements?.filter(p =>
+                p.cells.length === b.len && b.cells.every(cell => p.cells.some(q => q[0] === cell[0] && q[1] === cell[1]))
+            );
+            if (candidates && candidates.length === 1) {
+                let unique = candidates[0], filled = false;
+                for (let [cr, cc] of unique.cells) {
+                    if (S.board[cr][cc] === 0) { S.board[cr][cc] = 2; S.source[cr][cc] = 'auto'; filled = true; }
+                }
+                if (filled) {
+                    S.confirmed.push(b.sig);
+                    compute(); render();
+                    toast('✅ 推断补全长度' + b.len + '的船');
+                    logRea('小盘推断：补全长度' + b.len + '的船');
+                }
+            }
+        }
+    }
+
+    // 操作日志带推荐上下文（用于优化推荐算法）
+    let actDetail = (r+1)+','+(c+1)+'='+(S.board[r][c]===2?'船':S.board[r][c]===1?'空':'取消');
+    if (prevRec) actDetail += ' | 推('+(prevRec.r+1)+','+(prevRec.c+1)+')'+(followed?'✓':'✗');
+    logAct(v===2?'mark_ship':v===1?'mark_empty':'cancel', actDetail);
+}
+
+// ==================================================================
+// UI 函数
+// ==================================================================
+function setConfig(l, v) { push(); S.config[l] = Math.max(0, +v || 0); compute(); render(); }
+function addLength() { let l = prompt('请输入船长（2~10）', '2'); if (l && +l >= 2 && +l <= 10) { S.config[+l] = S.config[+l] || 1; compute(); render(); } }
+function confirmSelectedShip() {
+    // 直接从棋盘找船块（不依赖 derived，更可靠）
+    let target = null;
+    if (S.selected) {
+        target = blocks().find(b => b.sig === S.selected);
+    }
+    if (!target && S.lastMark) {
+        target = blocks().find(b => b.cells.some(p => p[0] === S.lastMark[0] && p[1] === S.lastMark[1]));
+    }
+    if (!target) { toast('请先在棋盘上标一个船格，再点确认整船'); S.selected = null; return; }
+    if (!(target.h || target.v) || !S.config[target.len]) { toast('当前船块无法确认（非直线或长度不匹配）'); S.selected = null; return; }
+    if (S.confirmed.includes(target.sig)) { toast('该船已确认'); S.selected = null; return; }
+    let confirmedCount = S.confirmed.filter(s => {
+        let b = blocks().find(x => x.sig === s);
+        return b && b.len === target.len;
+    }).length;
+    if (confirmedCount >= S.config[target.len]) { toast('长度' + target.len + '的船已全部确认（' + confirmedCount + '/' + S.config[target.len] + '），不能再确认'); S.selected = null; return; }
+    S.confirmed.push(target.sig); S.selected = null;
+    compute(); render();
+    toast('已确认长度' + target.len + '的船');
+    logAct('confirm_btn', '确认：长度' + target.len);
+}
+function undo() { if (!S.undo.length) return; S.redo.push(snap()); restore(S.undo.pop()); }
+function resetGame() { if (!confirm('确认重置当前棋盘？')) return; S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; S.consecutiveMisses = 0; compute(); render(); }
+function startBig() { S.big = {changes: {}}; render(); }
+function confirmBig() { if (!S.big) return; push(); let lastShip = null, prevRec = S.derived.best ? {r: S.derived.best.r, c: S.derived.best.c} : null; let hit = 0, applied = 0, ships = 0, empties = 0; let cells = [], hist = []; Object.entries(S.big.changes).forEach(([k, v]) => { let [r, c] = k.split(',').map(Number); S.board[r][c] = v; S.source[r][c] = 'big'; applied++; cells.push((r+1)+','+(c+1)+(v===2?'船':'空')); hist.push([r, c, v]); if (v === 2) { S.tools.sonarCoins += 10; ships++; lastShip = [r, c]; if (prevRec && r === prevRec.r && c === prevRec.c) { S.stats.recFollowed++; S.stats.recHit++; hit++; } } else { empties++; } }); if (lastShip) S.lastMark = lastShip; if (hist.length) S.bigHistory.push(hist); S.consecutiveMisses = 0; S.events.push({time: new Date().toLocaleTimeString('zh-CN', {hour12: false}), text: '大探测确认 ' + applied + ' 格'}); logAct('big_confirm', applied + '格(船' + ships + '空' + empties + ') ' + cells.join(' ') + ' 命中推荐' + hit + '/' + (prevRec ? 1 : 0)); S.big = null; compute(); render(); }
+function cancelBig() { S.big = null; render(); }
+function clearEvents() { S.events = []; render(); }
+function editResources() { let b = prompt('大探测次数', S.tools.bigDetect), s = prompt('小探测次数', S.tools.smallDetect), c = prompt('声呐币', S.tools.sonarCoins); if (b !== null) S.tools.bigDetect = Math.max(0, +b || 0); if (s !== null) S.tools.smallDetect = Math.max(0, +s || 0); if (c !== null) S.tools.sonarCoins = Math.max(0, +c || 0); render(); }
+function openSettings() {
+    $('useHistoryPrior').checked = S.useHistoryPrior;
+    $('historyWeight').value = Math.round(S.historyWeight * 100);
+    $('weightDisplay').textContent = S.historyWeight.toFixed(2);
+    // 刷新存档期列表
+    let store = getSaves(), sel = $('periodSelect');
+    sel.innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join('');
+    // 期合并下拉框
+    let fromSel = $('mergeFromSelect'), toSel = $('mergeToSelect');
+    if (fromSel) fromSel.innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '">' + p + '</option>').join('');
+    if (toSel) toSel.innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join('');
+    $('settingsModal').classList.add('show');
+}
+function switchPeriod(p) { S.currentPeriod = p; let store = getSaves(); store._currentPeriod = p; saveStore(store); toast('已切换到「' + p + '」'); }
+function newPeriod() { let n = prompt('新存档期名称：'); if (n && n.trim()) { S.currentPeriod = n.trim(); let store = getSaves(); store._currentPeriod = S.currentPeriod; if (!store._periods[S.currentPeriod]) store._periods[S.currentPeriod] = {}; saveStore(store); openSettings(); toast('已创建并切换到「' + S.currentPeriod + '」'); } }
+function deletePeriod() { if (S.currentPeriod === '默认') { toast('不能删除默认存档期'); return; } if (!confirm('删除存档期「' + S.currentPeriod + '」及其所有存档？此操作不可恢复。')) return; let store = getSaves(); delete store._periods[S.currentPeriod]; S.currentPeriod = '默认'; store._currentPeriod = '默认'; saveStore(store); openSettings(); toast('已删除存档期'); }
+function mergePeriod() { let from = $('mergeFromSelect').value, to = $('mergeToSelect').value; if (!from || !to) { toast('请选择来源期和目标期'); return; } if (from === to) { toast('来源与目标相同，无需合并'); return; } if (!confirm('把「' + from + '」的全部存档并入「' + to + '」？重名存档会跳过，不会覆盖任何已有存档。')) return; let store = getSaves(); if (!store._periods[to]) store._periods[to] = {}; let src = store._periods[from] || {}, dst = store._periods[to]; let added = 0, skipped = 0; for (let k in src) { if (!src[k] || typeof src[k] !== 'object') continue; if (dst[k]) { skipped++; } else { dst[k] = src[k]; added++; } } saveStore(store); refreshPeriodDropdown(); openSettings(); toast('合并完成：新增 ' + added + ' 个' + (skipped ? '，跳过重名 ' + skipped + ' 个' : '')); }
+function setHistory(v) { S.useHistoryPrior = v; compute(); render(); }
+function setHistoryWeight(v) { S.historyWeight = v / 100; $('weightDisplay').textContent = S.historyWeight.toFixed(2); compute(); render(); }
+function clearAllSaves() { if (confirm('确认删除全部存档（所有期）？')) { localStorage.removeItem(SAVE_KEY); toast('已清空所有存档'); } }
+function showHelp() { $('helpModal').classList.add('show'); }
+function closeModal(id) { $(id).classList.remove('show'); }
+function openBoardSettings() { $('modalRows').value = S.rows; $('modalCols').value = S.cols; $('modalConfig').innerHTML = Object.keys(S.config).sort((a, b) => b - a).map(l => '<label class="config-item">' + l + '格×<input data-len="' + l + '" type="number" min="0" max="9" value="' + S.config[l] + '"></label>').join(''); $('boardModal').classList.add('show'); }
+function applyBoardSettings() { S.rows = Math.max(3, Math.min(10, +$('modalRows').value || 10)); S.cols = Math.max(3, Math.min(10, +$('modalCols').value || 10)); let cfg = {}; $('modalConfig').querySelectorAll('input').forEach(i => cfg[i.dataset.len] = Math.max(0, +i.value || 0)); S.config = cfg; closeModal('boardModal'); S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; compute(); render(); }
+function exportFeedback() { download('ShipSolver_feedback.json', JSON.stringify({version: VERSION, state: snap(), actions: S.logs.actions, reasoning: S.logs.reasoning, stats: S.stats, userAgent: navigator.userAgent, viewport: {w: innerWidth, h: innerHeight}}, null, 2)); }
+
+// ==================================================================
+// 存档（支持分期槽 + 旧版兼容迁移）
+// ==================================================================
+function getSaves() {
+    try {
+        let raw = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+        if (raw._periods) return raw;  // 已是新版分期结构
+        // 旧格式迁移 → 分期结构（绝不丢数据）
+        let migrated = { _periods: {}, _currentPeriod: '默认' };
+        let period = migrated._periods['默认'];
+        // 兼容多种旧格式：
+        //  a) {name: {time, state}} 扁平
+        //  b) {version, saves: {name: {...}}} 旧导出
+        //  c) {saves: {name: {...}}}
+        let source = raw.saves && typeof raw.saves === 'object' && Object.keys(raw).some(k => k !== 'saves' && k !== 'version') ? raw.saves : raw;
+        // 若 raw 是 {version, saves}，用 raw.saves
+        if (raw.saves && !raw._periods && (raw.version !== undefined || Object.keys(raw).length === 1)) {
+            source = raw.saves;
+        }
+        for (let k in source) {
+            if (k === '_periods' || k === '_currentPeriod' || k === 'version') continue;
+            let v = source[k];
+            if (!v || typeof v !== 'object') continue;
+            // 单个存档：{time, state} 或直接是 state
+            if (v.state) { period[k] = v; }
+            else if (v.rows && v.board) { period[k] = {time: Date.now(), state: v}; }
+        }
+        if (Object.keys(period).length || raw._periods) {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(migrated));
+        }
+        return migrated;
+    } catch(e) { return { _periods: {}, _currentPeriod: '默认' }; }
+}
+function saveStore(data) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch(e) {} }
+function periodSaves() { let s = getSaves(); let p = s._periods[S.currentPeriod]; return p || {}; }
+function allSavesFlat() { let s = getSaves(), out = {}; for (let p in s._periods) Object.assign(out, s._periods[p]); return out; }
+function openSaves() { let store = getSaves(); $('savePeriodSelect').innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join(''); $('saveModal').classList.add('show'); renderSaves(); }
+function renderSaves() {
+    let store = getSaves();
+    let periods = Object.keys(store._periods || {});
+    let html = '';
+    if (!periods.length) { $('saveList').innerHTML = '<p class="hint">暂无任何存档</p>'; return; }
+    for (let p of periods) {
+        let saves = store._periods[p] || {};
+        let names = Object.keys(saves).sort((a,b) => (saves[b].time||0)-(saves[a].time||0));
+        if (!names.length) continue;
+        let isCur = p === S.currentPeriod;
+        html += '<div class="save-group" style="margin-top:10px"><div class="hint" style="margin-bottom:4px">' + (isCur ? '📌' : '🕘') + ' 期「' + p + '」' + (isCur ? ' <b style="color:#78ff9a">【当前】</b>' : '') + '（' + names.length + ' 个）</div>';
+        for (let n of names) {
+            let s = saves[n];
+        html += '<div class="save-row"><div class="save-main"><b>' + n + (isCur && n === S.currentSaveName ? ' <span style="color:#78ff9a">【当前】</span>' : '') + '</b><div class="hint">' + new Date(s.time).toLocaleString() + ' · ' + (s.state?.rows||'?') + '×' + (s.state?.cols||'?') + '</div></div><button onclick="App.loadSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">读取</button><button class="danger" onclick="App.deleteSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">删除</button></div>';
+        }
+        html += '</div>';
+    }
+    $('saveList').innerHTML = html;
+}
+function saveCurrent() { let n = $('saveName').value.trim() || '存档_' + new Date().toLocaleString().replace(/[/: ]/g, '-'); let store = getSaves(); if (!store._periods[S.currentPeriod]) store._periods[S.currentPeriod] = {}; store._periods[S.currentPeriod][n] = {time: Date.now(), state: snap(), period: S.currentPeriod}; store._currentPeriod = S.currentPeriod; S.currentSaveName = n; saveStore(store); renderSaves(); toast('已保存到「' + S.currentPeriod + '」'); }
+function loadSave(n, p) { let store = getSaves(); p = p ? decodeURIComponent(p) : S.currentPeriod; let s = (store._periods[p]||{})[decodeURIComponent(n)]; if (s) { restore(s.state); S.currentSaveName = decodeURIComponent(n); S.currentPeriod = p; store._currentPeriod = p; saveStore(store); closeModal('saveModal'); toast('已读取：' + S.currentSaveName); } }
+function deleteSave(n, p) { let store = getSaves(); p = p ? decodeURIComponent(p) : S.currentPeriod; delete store._periods[p][decodeURIComponent(n)]; if (S.currentSaveName === decodeURIComponent(n) && S.currentPeriod === p) S.currentSaveName = null; saveStore(store); renderSaves(); }
+function exportAll() { download('ShipSolver_saves.json', JSON.stringify(getSaves(), null, 2)); }
+function refreshPeriodDropdown() { let store = getSaves(); let sel = $('savePeriodSelect'); if (sel) sel.innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join(''); }
+function importJSON(e) { let f = e.target.files[0]; if (!f) return; let rd = new FileReader(); rd.onload = () => { try {
+    let x = JSON.parse(rd.result);
+    if (!x || typeof x !== 'object') throw new Error('bad');
+    let store = getSaves();
+    let total = 0;
+    if (x._periods) {
+        // 完整备份（exportAll 输出）：合并所有期，保留现有
+        for (let p in x._periods) {
+            if (p.startsWith('_')) continue;
+            if (!store._periods[p]) store._periods[p] = {};
+            for (let k in x._periods[p]) {
+                let v = x._periods[p][k];
+                if (v && typeof v === 'object' && (v.state || v.rows)) {
+                    if (!store._periods[p][k]) { store._periods[p][k] = v; total++; }
+                }
+            }
+        }
+        store._currentPeriod = x._currentPeriod || store._currentPeriod;
+    } else {
+        // 单存档集合：并入当前期
+        let src = x.saves && typeof x.saves === 'object' ? x.saves : x;
+        if (!store._periods[S.currentPeriod]) store._periods[S.currentPeriod] = {};
+        for (let k in src) {
+            if (k === '_periods' || k === '_currentPeriod' || k === 'version' || k === 'saves') continue;
+            let v = src[k];
+            if (v && typeof v === 'object' && (v.state || v.rows)) {
+                if (!store._periods[S.currentPeriod][k]) { store._periods[S.currentPeriod][k] = v; total++; }
+            }
+        }
+        store._currentPeriod = S.currentPeriod;
+    }
+    saveStore(store);
+    refreshPeriodDropdown();
+    renderSaves();
+    toast(total ? '导入成功：新增 ' + total + ' 个存档' : '导入完成（无新存档，可能都是重名）');
+} catch(e) { toast('导入失败：文件格式无效'); } }; rd.readAsText(f); }
+
+// ==================================================================
+// 启动
+// ==================================================================
+function boot() {
+    // 恢复当前期设置
+    try {
+        let store = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+        if (store._currentPeriod) S.currentPeriod = store._currentPeriod;
+    } catch(e) {}
+
+    let a = localStorage.getItem(AUTO_KEY);
+    let restored = false;
+    if (a) {
+        try {
+            let data = JSON.parse(a);
+            if (data && typeof data.rows === 'number' && data.rows >= 3 && data.rows <= 10 &&
+                typeof data.cols === 'number' && data.cols >= 3 && data.cols <= 10 &&
+                Array.isArray(data.board) && data.board.length === data.rows &&
+                data.board.every(row => Array.isArray(row) && row.length === data.cols)) {
+                restore(data); restored = true;
+            } else { localStorage.removeItem(AUTO_KEY); initFresh(); }
+        } catch(e) { localStorage.removeItem(AUTO_KEY); initFresh(); }
+    } else { initFresh(); }
+    setTimeout(() => { if (restored) toast('已恢复上次自动保存的进度'); }, 400);
+
+    ['shipsolver_autosave_32_4_1','shipsolver_autosave_32_4_0',
+     'shipsolver_autosave_32_3_0','shipsolver_autosave_32_2_0',
+     'shipsolver_autosave_v1_5_0','shipsolver_autosave_v1_6_0','shipsolver_autosave_v1_6_4']
+        .forEach(k => { try { localStorage.removeItem(k); } catch(e) {} });
+
+    setupGridEvents();
+
+    // 页面加载后延迟再画一次棋盘（确保布局已稳定）
+    setTimeout(renderGrid, 200);
+    setTimeout(renderGrid, 600);
+    let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderGrid, 150); });
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+        // 紧急重置：Ctrl+Shift+R 清除所有数据并刷新
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+            e.preventDefault();
+            localStorage.removeItem(AUTO_KEY);
+            localStorage.removeItem(SAVE_KEY);
+            location.reload();
+        }
+    });
+}
+function initFresh() {
+    try {
+        S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+        S.source = Array.from({length: S.rows}, () => Array(S.cols).fill(''));
+        compute(); render();
+    } catch(e) {
+        console.error('ShipSolver: 初始化失败', e);
+        // 最坏情况：强制画空棋盘
+        S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+        S.derived = {scores: Array.from({length: S.rows}, () => Array(S.cols).fill(0)), gameFinished: false, locks: new Map(), forced: new Set()};
+        renderGrid();
+    }
+}
+
+return {boot, undo, resetGame, setConfig, addLength, confirmSelectedShip, startBig, confirmBig, cancelBig, clearEvents, openSaves, saveCurrent, loadSave, deleteSave, exportAll, importJSON, editResources, openSettings, setHistory, setHistoryWeight, clearAllSaves, openBoardSettings, applyBoardSettings, closeModal, showHelp, switchPeriod, newPeriod, deletePeriod, mergePeriod, exportFeedback};
+})();
+window.addEventListener('DOMContentLoaded', App.boot);
+</script>
+</body>
+</html>

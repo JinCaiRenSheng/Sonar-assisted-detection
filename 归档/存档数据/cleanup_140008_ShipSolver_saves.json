@@ -1,0 +1,460 @@
+{
+  "_periods": {
+    "默认": {
+      "1号海域": {
+        "time": 1785525757309,
+        "state": {
+          "_fmt": 2,
+          "rows": 3,
+          "cols": 3,
+          "board": [
+            [
+              2,
+              1,
+              0
+            ],
+            [
+              2,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              0
+            ]
+          ],
+          "source": [
+            [
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "auto",
+              "",
+              ""
+            ],
+            [
+              "auto",
+              "",
+              ""
+            ]
+          ],
+          "config": {
+            "2": 0,
+            "3": 1,
+            "4": 0,
+            "5": 0
+          },
+          "confirmed": [
+            "0,0|1,0|2,0"
+          ],
+          "tools": {
+            "bigDetect": 2,
+            "smallDetect": 9,
+            "sonarCoins": 3070
+          },
+          "events": [],
+          "useHistoryPrior": false,
+          "historyWeight": 0.2,
+          "consecutiveMisses": 1
+        },
+        "period": "默认"
+      },
+      "3号海域": {
+        "time": 1785528490220,
+        "state": {
+          "_fmt": 2,
+          "rows": 5,
+          "cols": 5,
+          "board": [
+            [
+              0,
+              0,
+              2,
+              2,
+              0
+            ],
+            [
+              2,
+              1,
+              1,
+              1,
+              0
+            ],
+            [
+              2,
+              0,
+              1,
+              0,
+              1
+            ],
+            [
+              2,
+              0,
+              0,
+              1,
+              2
+            ],
+            [
+              0,
+              0,
+              1,
+              0,
+              2
+            ]
+          ],
+          "source": [
+            [
+              "",
+              "",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "manual",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "",
+              "manual",
+              "",
+              "manual"
+            ],
+            [
+              "manual",
+              "",
+              "",
+              "manual",
+              "manual"
+            ],
+            [
+              "",
+              "",
+              "manual",
+              "",
+              "auto"
+            ]
+          ],
+          "config": {
+            "2": 2,
+            "3": 1,
+            "4": 0,
+            "5": 0
+          },
+          "confirmed": [
+            "1,0|2,0|3,0",
+            "0,2|0,3",
+            "3,4|4,4"
+          ],
+          "tools": {
+            "bigDetect": 2,
+            "smallDetect": 9,
+            "sonarCoins": 3170
+          },
+          "events": [],
+          "useHistoryPrior": false,
+          "historyWeight": 0.2,
+          "consecutiveMisses": 0
+        },
+        "period": "默认"
+      },
+      "4号海域": {
+        "time": 1785529015181,
+        "state": {
+          "_fmt": 2,
+          "rows": 6,
+          "cols": 6,
+          "board": [
+            [
+              2,
+              0,
+              1,
+              0,
+              2,
+              0
+            ],
+            [
+              2,
+              1,
+              0,
+              1,
+              2,
+              0
+            ],
+            [
+              2,
+              0,
+              1,
+              0,
+              2,
+              0
+            ],
+            [
+              1,
+              1,
+              0,
+              1,
+              2,
+              0
+            ],
+            [
+              1,
+              1,
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              1,
+              2,
+              2,
+              0
+            ]
+          ],
+          "source": [
+            [
+              "manual",
+              "",
+              "manual",
+              "",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "manual",
+              "",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "",
+              "manual",
+              "",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "manual",
+              "",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "manual",
+              "",
+              "",
+              "manual",
+              ""
+            ],
+            [
+              "",
+              "",
+              "manual",
+              "manual",
+              "manual",
+              ""
+            ]
+          ],
+          "config": {
+            "2": 1,
+            "3": 1,
+            "4": 1,
+            "5": 0
+          },
+          "confirmed": [
+            "0,4|1,4|2,4|3,4",
+            "0,0|1,0|2,0",
+            "5,3|5,4"
+          ],
+          "tools": {
+            "bigDetect": 2,
+            "smallDetect": 9,
+            "sonarCoins": 3260
+          },
+          "events": [],
+          "useHistoryPrior": false,
+          "historyWeight": 0.2,
+          "consecutiveMisses": 0
+        },
+        "period": "默认"
+      },
+      "5号海域": {
+        "time": 1785563724159,
+        "state": {
+          "_fmt": 2,
+          "rows": 7,
+          "cols": 7,
+          "board": [
+            [
+              0,
+              2,
+              0,
+              2,
+              1,
+              1,
+              0
+            ],
+            [
+              1,
+              2,
+              0,
+              2,
+              1,
+              0,
+              1
+            ],
+            [
+              1,
+              0,
+              1,
+              2,
+              0,
+              1,
+              0
+            ],
+            [
+              2,
+              0,
+              0,
+              1,
+              0,
+              0,
+              1
+            ],
+            [
+              2,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            [
+              2,
+              0,
+              2,
+              2,
+              2,
+              2,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          ],
+          "source": [
+            [
+              "",
+              "auto",
+              "",
+              "manual",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "manual",
+              "",
+              "manual",
+              "manual",
+              "",
+              "manual"
+            ],
+            [
+              "manual",
+              "",
+              "manual",
+              "manual",
+              "",
+              "manual",
+              ""
+            ],
+            [
+              "manual",
+              "",
+              "",
+              "manual",
+              "",
+              "",
+              "manual"
+            ],
+            [
+              "manual",
+              "",
+              "",
+              "",
+              "manual",
+              "",
+              ""
+            ],
+            [
+              "manual",
+              "",
+              "manual",
+              "manual",
+              "manual",
+              "manual",
+              ""
+            ],
+            [
+              "",
+              "",
+              "",
+              "",
+              "",
+              "",
+              ""
+            ]
+          ],
+          "config": {
+            "2": 1,
+            "3": 2,
+            "4": 1,
+            "5": 0
+          },
+          "confirmed": [
+            "3,0|4,0|5,0",
+            "0,3|1,3|2,3",
+            "5,2|5,3|5,4|5,5",
+            "0,1|1,1"
+          ],
+          "tools": {
+            "bigDetect": 2,
+            "smallDetect": 9,
+            "sonarCoins": 3370
+          },
+          "events": [],
+          "useHistoryPrior": false,
+          "historyWeight": 0.2,
+          "consecutiveMisses": 1
+        },
+        "period": "默认"
+      }
+    }
+  },
+  "_currentPeriod": "默认"
+}

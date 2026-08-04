@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShipSolver v1.0.0 Stable</title>
+<style>
+*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{margin:0;min-height:100vh;padding:18px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#eef5ff;background:linear-gradient(135deg,#15345f,#245b9e)}
+.container{max-width:1250px;margin:auto}.panel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:12px;padding:13px;margin-bottom:12px;backdrop-filter:blur(8px)}h1{text-align:center;margin:0 0 4px;font-size:25px}.subtitle{text-align:center;font-size:12px;opacity:.76;margin-bottom:14px}.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}button,input,textarea,select{font:inherit}button{border:0;border-radius:6px;padding:7px 11px;background:#448bd7;color:white;font-weight:600;cursor:pointer}button:hover{filter:brightness(1.12)}button.secondary{background:#697480}button.warn{background:#b76b28}button.danger{background:#b94c48}button:disabled{opacity:.45;cursor:not-allowed}input[type=number]{width:54px}input,textarea,select{border:1px solid rgba(255,255,255,.25);border-radius:6px;background:rgba(0,0,0,.22);color:#fff;padding:5px 7px}.layout{display:grid;grid-template-columns:minmax(500px,1fr) minmax(300px,340px);gap:14px;align-items:start}
+@media(max-width:1050px){.layout{grid-template-columns:1fr}.sidebar{width:100%}.grid-wrap{min-width:0}}
+@media(max-width:640px){body{padding:8px}.panel{padding:10px}.controls{gap:6px}.grid-wrap{padding:12px 0}.cell{width:40px;height:40px}}
+.grid-wrap{overflow:auto;padding:22px 0}.diamond{position:relative;margin:auto}.cell{position:absolute;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.13);background:rgba(69,103,154,.4);cursor:pointer;user-select:none;transition:.15s}.cell:hover{filter:brightness(1.18)}.cell.ship{background:#d6534f;color:#fff;font-weight:800}.cell.empty{background:rgba(0,0,0,.58);color:#b7c1cc}.cell.locked{background:repeating-linear-gradient(45deg,#464f5b 0,#464f5b 5px,#596473 5px,#596473 10px);color:rgba(255,255,255,.72);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}.cell.possible{box-shadow:inset 0 0 0 2px rgba(255,215,0,.55)}.cell.high{box-shadow:inset 0 0 0 3px rgba(255,195,0,.9)}.cell.best{box-shadow:inset 0 0 0 3px #57d4ff,0 0 13px #57d4ff;animation:pulse 1.4s infinite}.cell.forced{box-shadow:inset 0 0 0 3px #78ff9a,0 0 14px #78ff9a}
+.cell.big-zone{background-image:linear-gradient(rgba(87,212,255,.16),rgba(87,212,255,.16));box-shadow:inset 0 0 0 2px rgba(87,212,255,.72)}
+.cell.big-zone.hot{background-image:linear-gradient(rgba(255,193,7,.25),rgba(255,193,7,.25));box-shadow:inset 0 0 0 3px rgba(255,208,68,.9),0 0 8px rgba(255,208,68,.45)}
+.cell.big-zone.core{background-image:linear-gradient(rgba(255,94,87,.30),rgba(255,94,87,.30));box-shadow:inset 0 0 0 3px rgba(255,122,105,.95),0 0 12px rgba(255,122,105,.55)}
+.cell.small-confirmed:after{content:'✓';position:absolute;right:3px;bottom:1px;transform:rotate(-45deg);font-size:10px;color:#8ff0ad;text-shadow:0 1px 2px #000}
+.cell.selected{outline:3px solid #fff}.cell span{transform:rotate(-45deg);font-size:11px}.cell.ship span{font-size:15px}.cell.locked span{transform:rotate(-45deg);font-size:16px;font-weight:800}.legend{display:flex;gap:11px;align-items:center;flex-wrap:wrap;font-size:11px}.sq{width:14px;height:14px;display:inline-block;border:1px solid rgba(255,255,255,.25);border-radius:2px}.legend label{display:inline-flex;gap:4px;align-items:center}.side-title{margin:0 0 8px;color:#ffd95a;font-size:14px}.progress{display:flex;gap:6px;flex-wrap:wrap}.badge{padding:4px 8px;border-radius:5px;background:rgba(0,0,0,.24);font-size:12px}.badge.done{background:#2f9e55}.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px}.status-grid div{padding:6px;border-radius:5px;background:rgba(0,0,0,.2)}.suggest{border:1px solid #ffd95a;border-radius:7px;padding:9px;background:rgba(255,215,0,.08);font-size:12px;line-height:1.65}.hint{font-size:11px;opacity:.7}.tabs{display:flex;gap:6px;margin-bottom:7px}.logtabs{display:flex;gap:5px;margin-bottom:6px}.logbox{height:190px;overflow:auto;background:rgba(0,0,0,.28);border-radius:6px;padding:7px;font:11px/1.5 Consolas,monospace;white-space:pre-wrap}.logbox .entry{padding:5px 4px;border-bottom:1px solid rgba(255,255,255,.07)}.logbox .reason{color:#8be5ff}.logbox .warn{color:#ffc176}.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99;align-items:center;justify-content:center}.modal-bg.show{display:flex}.modal{width:min(720px,94vw);max-height:84vh;overflow:auto;background:#182b40;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px}.save-row{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:6px;margin-top:6px}.save-main{flex:1}.small{font-size:11px;padding:4px 7px}.event{padding:6px;background:rgba(0,0,0,.2);border-radius:5px;margin-top:5px;font-size:11px;line-height:1.5}.config-item{display:inline-flex;align-items:center;gap:3px;background:rgba(0,0,0,.2);padding:3px 6px;border-radius:5px}.config-item input{width:40px}.config-ok{color:#9ff0ad}.config-pending{color:#ffd18b}.mono{font-family:Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🎯 ShipSolver v1.0.0 Stable</h1>
+<div class="subtitle">大探测优先 · 批次摘要日志 · 自动确认整船 · 可见锁定 · 坐标从1开始</div>
+<div class="panel controls">
+<label>行 <input id="rows" type="number" min="3" max="20" value="10"></label><label>列 <input id="cols" type="number" min="3" max="20" value="10"></label>
+<span>|</span><button class="secondary" onclick="undo()">↶ 撤销</button><button class="secondary" onclick="redo()">↷ 重做</button><span>|</span>
+<label>船只配置</label><span id="configList"></span><button onclick="addLength()">＋长度</button><span id="configState" class="config-ok">已同步</span>
+<button onclick="confirmSelectedShip()">🔒 确认整船</button><button class="secondary" onclick="resetGame()">重置</button><button class="secondary" onclick="openSaves()">💾 存读档</button>
+</div>
+<div class="panel legend">
+<label><span class="sq" style="background:rgba(69,103,154,.4)"></span>未知</label><label><span class="sq" style="background:#d6534f"></span>船</label><label><span class="sq" style="background:rgba(0,0,0,.58)"></span>已知空</label><label><span class="sq" style="background:repeating-linear-gradient(45deg,#464f5b 0,#464f5b 4px,#596473 4px,#596473 8px)"></span>锁定</label><label><span class="sq" style="box-shadow:inset 0 0 0 2px rgba(255,215,0,.7)"></span>可能区域</label><label><span class="sq" style="box-shadow:inset 0 0 0 3px #57d4ff;background:rgba(87,212,255,.18)"></span>推荐大探测区域</label><label><span class="sq" style="box-shadow:inset 0 0 0 3px #78ff9a"></span>必然为船</label>
+<span class="hint">普通状态下左键：船/取消；右键：空/取消；Shift+左键船格：选择整船。锁定格仅显示“锁定”，内部可保留空信息。</span>
+</div>
+<div class="layout">
+<div class="panel grid-wrap"><div id="grid"></div></div>
+<div>
+<div class="panel"><h3 class="side-title">🚢 进度与状态</h3><div id="progress" class="progress"></div><div id="status" class="status-grid" style="margin-top:8px"></div></div>
+<div class="panel"><h3 class="side-title">💡 大探测建议</h3><div id="suggestion" class="suggest"></div></div>
+<div class="panel"><h3 class="side-title">🔎 大探测录入</h3><div id="bigBox"><div id="bigSessionStatus" class="suggest">尚未开始本次大探测。</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button id="startBigBtn" onclick="startBigSession()">开始本次大探测</button><button id="confirmBigBtn" onclick="confirmBigSession()" disabled>确认本次</button><button id="cancelBigBtn" class="secondary" onclick="cancelBigSession()" disabled>取消本次</button><button class="secondary" onclick="clearEventHistory()">清空历史</button></div><div id="bigRecommend" class="suggest" style="margin-top:8px"></div><div id="events"></div></div></div>
+<div class="panel"><h3 class="side-title">📜 摘要记录</h3><div id="logbox" class="logbox"></div><div style="margin-top:6px"><button class="small" onclick="copyAILog()">复制摘要</button><button class="small secondary" onclick="exportLog()">导出摘要</button></div></div>
+</div></div></div>
+<div id="saveModal" class="modal-bg" onclick="if(event.target===this)closeSaves()"><div class="modal"><h3>💾 存读档</h3><div id="currentSave" class="suggest"></div><div class="controls" style="margin-top:8px"><input id="saveName" placeholder="另存为名称"><button id="saveCurrentBtn" onclick="saveCurrent()">保存当前</button><button onclick="saveAs()">另存为</button><button class="secondary" onclick="exportCurrent()">导出当前</button><button class="secondary" onclick="exportAll()">导出全部</button><button class="secondary" onclick="document.getElementById('importFile').click()">导入</button><input id="importFile" type="file" accept=".json" hidden onchange="importJSON(event)"></div><div id="saveList"></div><div style="text-align:right;margin-top:10px"><button class="secondary" onclick="closeSaves()">关闭</button></div></div></div>
+<script>
+'use strict';
+const VERSION='1.0.0', SAVE_KEY='shipsolver_saves', AUTO_KEY='shipsolver_autosave_v1_0_0', LEGACY_AUTO_KEYS=['shipsolver_autosave_32_4_1','shipsolver_autosave_32_4_0','shipsolver_autosave_32_3_0','shipsolver_autosave_32_2_0'];
+let ROWS=10,COLS=10,board=[],source=[],config={5:1,4:1,3:1,2:2},confirmedShips=[],bigEvents=[],currentSaveName=null,selected=null,mode='normal',bigSession=null;
+let derived={blocks:[],completed:[],progress:{},locks:new Map(),remaining:[],placements:[],scores:[],forced:new Set(),best:null,bigArea:null,bigAreas:[]};
+let undoStack=[],redoStack=[],logs={summary:[]},activeLog='summary',autosaveTimer=null,smallConfirmMode=false;
+const DIR8=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+const deep=x=>JSON.parse(JSON.stringify(x));
+const key=(r,c)=>`${r},${c}`;
+const coord=(r,c)=>`(${r+1},${c+1})`;
+const inb=(r,c)=>r>=0&&r<ROWS&&c>=0&&c<COLS;
+const sig=cells=>cells.map(([r,c])=>key(r,c)).sort().join('|');
+function initBoard(){board=Array.from({length:ROWS},()=>Array(COLS).fill(0));source=Array.from({length:ROWS},()=>Array(COLS).fill(''));}
+function factSnapshot(){return{ROWS,COLS,board:deep(board),source:deep(source),config:{...config},confirmedShips:[...confirmedShips],bigEvents:deep(bigEvents),currentSaveName};}
+function restoreFacts(s){ROWS=s.ROWS;COLS=s.COLS;board=deep(s.board);source=s.source?deep(s.source):Array.from({length:ROWS},()=>Array(COLS).fill(''));config={...s.config};confirmedShips=[...(s.confirmedShips||[])];bigEvents=deep(s.bigEvents||[]);currentSaveName=s.currentSaveName||null;selected=null;document.getElementById('rows').value=ROWS;document.getElementById('cols').value=COLS;renderConfig();recomputeAll('恢复状态');}
+function pushUndo(){undoStack.push(factSnapshot());if(undoStack.length>100)undoStack.shift();redoStack=[];}
+function undo(){
+ if(bigSession){
+  if(!bigSession.history.length)return toast('本次大探测没有可撤销记录','warn');
+  const last=bigSession.history.pop(),k=key(last.r,last.c);
+  board[last.r][last.c]=last.beforeV;source[last.r][last.c]=last.beforeSource;
+  bigSession.seen.delete(k);
+  bigSession.added=bigSession.added.filter(x=>!(x[0]===last.r&&x[1]===last.c));
+  bigSession.repeated=bigSession.repeated.filter(x=>!(x[0]===last.r&&x[1]===last.c));
+  bigSession.conflicts=bigSession.conflicts.filter(x=>!(x[0]===last.r&&x[1]===last.c));
+  recomputeAll('撤销本次大探测一步');renderBigSession();return;
+ }
+ if(!undoStack.length)return toast('没有可撤销操作','warn');
+ redoStack.push(factSnapshot());restoreFacts(undoStack.pop());addLog('operation','撤销','恢复到上一步事实状态');scheduleAutosave();
+}
+function redo(){if(!redoStack.length)return toast('没有可重做操作','warn');undoStack.push(factSnapshot());restoreFacts(redoStack.pop());addLog('operation','重做','恢复到下一步事实状态');scheduleAutosave();}
+function getBlocks(){const vis=Array.from({length:ROWS},()=>Array(COLS).fill(false)),out=[];for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){if(board[r][c]!==2||vis[r][c])continue;const cells=[],st=[[r,c]];while(st.length){const [x,y]=st.pop();if(!inb(x,y)||vis[x][y]||board[x][y]!==2)continue;vis[x][y]=true;cells.push([x,y]);st.push([x-1,y],[x+1,y],[x,y-1],[x,y+1]);}const rs=cells.map(x=>x[0]),cs=cells.map(x=>x[1]);out.push({cells,len:cells.length,minR:Math.min(...rs),maxR:Math.max(...rs),minC:Math.min(...cs),maxC:Math.max(...cs),horizontal:new Set(rs).size===1,vertical:new Set(cs).size===1,signature:sig(cells)});}return out;}
+function endBlocked(b){if(!b.horizontal&&!b.vertical)return[false,false];if(b.horizontal){const a=b.minC===0||board[b.minR][b.minC-1]===1;const z=b.maxC===COLS-1||board[b.minR][b.maxC+1]===1;return[a,z];}const a=b.minR===0||board[b.minR-1][b.minC]===1;const z=b.maxR===ROWS-1||board[b.maxR+1][b.minC]===1;return[a,z];}
+function rebuildDerived(){
+ derived.blocks=getBlocks();derived.completed=[];derived.progress=Object.fromEntries(Object.keys(config).map(x=>[x,0]));
+ const validConfirmed=[];
+ const eligible=derived.blocks.filter(b=>(b.horizontal||b.vertical)&&config[b.len]);
+ const confirmed=eligible.filter(b=>confirmedShips.includes(b.signature));
+ const automatic=eligible.filter(b=>!confirmedShips.includes(b.signature));
+ for(const b of confirmed){
+  if((derived.progress[b.len]||0)<config[b.len]){
+   derived.completed.push({...b,reason:'手动或自动确认'});
+   derived.progress[b.len]++;validConfirmed.push(b.signature);
+  }
+ }
+ for(const b of automatic){
+  const [a,z]=endBlocked(b);
+  if(a&&z&&(derived.progress[b.len]||0)<config[b.len]){
+   derived.completed.push({...b,reason:'两端由边界或已知空格封闭'});
+   derived.progress[b.len]++;
+  }
+ }
+ confirmedShips=validConfirmed;
+ derived.locks=new Map();
+ for(const b of derived.completed)for(const [r,c] of b.cells)for(const[dr,dc]of DIR8){
+  const x=r+dr,y=c+dc;if(inb(x,y)&&board[x][y]!==2)derived.locks.set(key(x,y),{ship:b.signature,reason:b.reason});
+ }
+ derived.remaining=[];
+ for(const[len,cnt]of Object.entries(config))for(let i=0;i<cnt-(derived.progress[len]||0);i++)derived.remaining.push(Number(len));
+}
+function placementValid(cells,allowHits=true){const set=new Set(cells.map(([r,c])=>key(r,c)));for(const[r,c]of cells){if(!inb(r,c)||board[r][c]===1||derived.locks.has(key(r,c)))return false;}for(const[r,c]of cells)for(const[dr,dc]of DIR8){const x=r+dr,y=c+dc;if(inb(x,y)&&board[x][y]===2&&!set.has(key(x,y)))return false;}return true;}
+function enumeratePlacements(){const out=[];for(const len of derived.remaining){for(let r=0;r<ROWS;r++)for(let c=0;c<=COLS-len;c++){const cells=Array.from({length:len},(_,i)=>[r,c+i]);if(placementValid(cells))out.push({len,cells});}for(let c=0;c<COLS;c++)for(let r=0;r<=ROWS-len;r++){const cells=Array.from({length:len},(_,i)=>[r+i,c]);if(placementValid(cells))out.push({len,cells});}}derived.placements=out;}
+function historicalPrior(){const saves=getSaves(),arr=Array.from({length:ROWS},()=>Array(COLS).fill(0)),matching=Object.values(saves).filter(s=>s.ROWS===ROWS&&s.COLS===COLS&&JSON.stringify(s.config)===JSON.stringify(config));if(!matching.length)return arr;for(const s of matching)for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(s.board?.[r]?.[c]===2)arr[r][c]++;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)arr[r][c]/=matching.length;return arr;}
+function scoreCells(){
+const raw=Array.from({length:ROWS},()=>Array(COLS).fill(0)),cover=Array.from({length:ROWS},()=>Array(COLS).fill(0)),focus=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+const unresolved=derived.blocks.filter(b=>!derived.completed.some(x=>x.signature===b.signature));
+for(const p of derived.placements){
+ const touchesHit=unresolved.some(b=>b.cells.every(([r,c])=>p.cells.some(([x,y])=>x===r&&y===c)));
+ for(const[r,c]of p.cells)if(board[r][c]===0){cover[r][c]++;raw[r][c]++;if(touchesHit)focus[r][c]+=4;}
+}
+const prior=historicalPrior(),priorWeight=unresolved.length?0:.02;
+let max=0;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+ if(board[r][c]!==0||derived.locks.has(key(r,c)))continue;
+ raw[r][c]=raw[r][c]+focus[r][c]+prior[r][c]*Math.max(1,derived.placements.length)*priorWeight;
+ max=Math.max(max,raw[r][c]);
+}
+derived.scores=raw.map(row=>row.map(v=>max?v/max:0));
+derived.forced=new Set();
+for(const b of unresolved){
+ const candidates=derived.placements.filter(p=>b.cells.every(([r,c])=>p.cells.some(([x,y])=>x===r&&y===c)));
+ if(!candidates.length)continue;
+ let common=new Set(candidates[0].cells.map(([r,c])=>key(r,c)));
+ for(const p of candidates.slice(1)){const s=new Set(p.cells.map(([r,c])=>key(r,c)));common=new Set([...common].filter(k=>s.has(k)));}
+ for(const k of common){const[r,c]=k.split(',').map(Number);if(board[r][c]===0)derived.forced.add(k);}
+}
+let best=null;
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+ if(board[r][c]!==0||derived.locks.has(key(r,c)))continue;
+ const s=derived.scores[r][c];if(!best||s>best.score)best={r,c,score:s,cover:cover[r][c],focus:focus[r][c]};
+}
+derived.best=best;computeBigArea();
+}
+function computeBigArea(){
+ derived.bigArea=null;derived.bigAreas=[];
+ if(!derived.remaining.length||!derived.placements.length)return;
+ const size=Math.min(3,ROWS,COLS);
+ const unresolved=derived.blocks.filter(b=>!derived.completed.some(x=>x.signature===b.signature));
+ const unresolvedSet=new Set(unresolved.flatMap(b=>b.cells.map(([r,c])=>key(r,c))));
+ const recent=bigEvents.slice(-4),recentCount=new Map();
+ for(const ev of recent)for(const a of [...(ev.added||[]),...(ev.repeated||[])]){
+  const k=key(a[0],a[1]);recentCount.set(k,(recentCount.get(k)||0)+1);
+ }
+ const areas=[];
+ for(let r=0;r<=ROWS-size;r++)for(let c=0;c<=COLS-size;c++){
+  let score=0,unknown=0,knownShip=0,related=0,repeated=0,smallConfirmed=0;
+  for(let i=0;i<size;i++)for(let j=0;j<size;j++){
+   const x=r+i,y=c+j,k=key(x,y),s=derived.scores[x]?.[y]||0;
+   if(board[x][y]===0&&!derived.locks.has(k)){score+=2.6+s*4.2;unknown++;}
+   else if(board[x][y]===2){knownShip++;score+=unresolvedSet.has(k)?2.2:.15;}
+   else score-=1.15;
+   if(unresolvedSet.has(k)){related++;score+=4.5;}
+   const rc=recentCount.get(k)||0;if(rc){repeated+=rc;score-=rc*1.6;}
+   if(source[x][y]==='small'){smallConfirmed++;score-=1.8;}
+   if(derived.locks.has(k))score-=1.2;
+  }
+  if(unresolved.length&&related===0){
+   let near=false;
+   for(const b of unresolved)for(const [br,bc] of b.cells)if(br>=r-1&&br<=r+size&&bc>=c-1&&bc<=c+size)near=true;
+   if(!near)score-=1000;else score+=2;
+  }
+  areas.push({r,c,size,score,unknown,knownShip,related,repeated,smallConfirmed});
+ }
+ areas.sort((a,b)=>b.score-a.score);
+ derived.bigAreas=areas.slice(0,3);
+ derived.bigArea=derived.bigAreas[0]||null;
+}
+function autoConfirmUniqueShips(){
+ const added=[];
+ for(const b of derived.blocks){
+  if(derived.completed.some(x=>x.signature===b.signature)||(!b.horizontal&&!b.vertical)||!config[b.len])continue;
+  if((derived.progress[b.len]||0)>=config[b.len])continue;
+  const candidates=derived.placements.filter(p=>b.cells.every(([r,c])=>p.cells.some(([x,y])=>x===r&&y===c)));
+  if(!candidates.length)continue;
+  const exact=candidates.filter(p=>p.cells.length===b.cells.length&&sig(p.cells)===b.signature);
+  if(exact.length===candidates.length&&!confirmedShips.includes(b.signature)){
+    confirmedShips.push(b.signature);added.push(`长度${b.len}：${b.cells.map(x=>coord(...x)).join('、')}`);
+  }
+ }
+ if(added.length)addLog('reasoning','自动确认整船',added.join('；')+'。依据：当前合法方案中，该命中船体不能再延伸且长度唯一。');
+ return added.length>0;
+}
+function recomputeAll(reason='重新计算'){const before=derived.progress?{...derived.progress}:{};rebuildDerived();enumeratePlacements();scoreCells();if(autoConfirmUniqueShips()){rebuildDerived();enumeratePlacements();scoreCells();}const changes=[];for(const l of Object.keys(config)){const a=before[l]||0,b=derived.progress[l]||0;if(a!==b)changes.push(`长度${l}：${a}/${config[l]}→${b}/${config[l]}`);}if(changes.length)addLog('state','完成进度变化',changes.join('；'));renderAll();}
+function autoInfer(){if(!derived.forced.size)return false;pushUndo();const cells=[];for(const k of derived.forced){const[r,c]=k.split(',').map(Number);if(board[r][c]===0){board[r][c]=2;source[r][c]='auto';cells.push(coord(r,c));}}if(cells.length){addLog('reasoning','确定性推断',`${cells.join('、')} 在当前全部候选船位中都为船，已自动标记。`);recomputeAll('自动推断');scheduleAutosave();return true;}return false;}
+function mark(r,c,v){
+ if(mode==='big'&&bigSession)return markBigCell(r,c,v);
+ if(smallConfirmMode)return smallConfirm(r,c);
+ if(derived.locks.has(key(r,c))){toast(`该位置已锁定：${derived.locks.get(key(r,c)).reason}`,'warn');return;}
+ const cur=board[r][c];
+ if(cur===2&&v===2){selected=[r,c];renderGrid();toast(`已选择 ${coord(r,c)} 所在船体；点击“确认整船”即可锁定。`);return;}
+ if(cur===1&&v===1){toast(`${coord(r,c)} 已记录为空；按 Ctrl+右键可取消。`);return;}
+ if(cur!==0)return;
+ pushUndo();board[r][c]=v;source[r][c]='normal';
+ const action=v===2?'标记为船':'标记为空';
+ addLog('operation',action,`${coord(r,c)}：未知→${stateName(v)}`);
+ selected=v===2?[r,c]:selected;recomputeAll(action);autoInfer();scheduleAutosave();
+}
+function clearMark(r,c){
+ if(derived.locks.has(key(r,c)))return toast('锁定格不能直接取消，请先修改对应船体','warn');
+ if(board[r][c]===0)return;
+ pushUndo();const before=board[r][c];board[r][c]=0;source[r][c]='';selected=null;
+ addLog('operation',before===2?'取消船格':'取消空格',`${coord(r,c)}：${stateName(before)}→未知`);
+ recomputeAll('取消标记');scheduleAutosave();
+}
+function stateName(v){return v===2?'船':v===1?'空':'未知';}
+function toggleSmallConfirm(){
+ smallConfirmMode=!smallConfirmMode;
+ const b=document.getElementById('smallConfirmBtn');
+ b.textContent=`✓ 小探确认：${smallConfirmMode?'开':'关'}`;
+ b.className=smallConfirmMode?'warn':'secondary';
+ toast(smallConfirmMode?'小探确认模式：点击已知船/空，标记为已用小探确认':'已关闭小探确认模式');
+}
+function smallConfirm(r,c){
+ if(board[r][c]===0)return toast('只能确认已经记录为船或空的格子','warn');
+ if(source[r][c]==='small')return toast(`${coord(r,c)} 已经小探确认`,'warn');
+ pushUndo();source[r][c]='small';
+ addLog('operation','小探确认',`${coord(r,c)} 已确认；后续大探测规划将主动避开该格。`);
+ recomputeAll('小探确认');scheduleAutosave();
+}
+function confirmSelectedShip(){if(!selected)return toast('请先 Shift+左键选择一段船体','warn');const b=derived.blocks.find(x=>x.cells.some(([r,c])=>r===selected[0]&&c===selected[1]));if(!b||(!b.horizontal&&!b.vertical)||!config[b.len])return toast('当前船体不能确认','warn');if((derived.progress[b.len]||0)>=config[b.len]&&!derived.completed.some(x=>x.signature===b.signature))return toast(`长度${b.len}的船已全部完成，不能再确认`,'warn');pushUndo();if(!confirmedShips.includes(b.signature))confirmedShips.push(b.signature);addLog('operation','手动确认整船',`确认长度${b.len}船：${b.cells.map(x=>coord(...x)).join('、')}`);recomputeAll('确认整船');scheduleAutosave();}
+function renderGrid(){
+ const CELL=44,diag=CELL*1.4142,step=diag*.5+4,minDiff=-(ROWS-1),maxDiff=COLS-1,maxSum=ROWS+COLS-2;
+ const w=(maxDiff-minDiff)*step+CELL*4,h=maxSum*step+CELL*4,xoff=-minDiff*step+CELL*2,yoff=CELL*2;
+ const areaMap=new Map();
+ (derived.bigAreas||[]).forEach((a,rank)=>{for(let i=0;i<a.size;i++)for(let j=0;j<a.size;j++){
+  const k=key(a.r+i,a.c+j);if(!areaMap.has(k))areaMap.set(k,rank);
+ }});
+ let html=`<div class="diamond" style="width:${w}px;height:${h}px">`;
+ for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  const x=xoff+(c-r)*step,y=yoff+(c+r)*step,k=key(r,c);let cls='cell',txt=`${r+1},${c+1}`;
+  if(board[r][c]===2){cls+=' ship';txt='■';}
+  else if(derived.locks.has(k)){cls+=' locked';txt='×';}
+  else if(board[r][c]===1){cls+=' empty';txt='·';}
+  else{
+   const s=derived.scores[r]?.[c]||0;if(s>=.75)cls+=' high';else if(s>=.35)cls+=' possible';
+   if(areaMap.has(k)){cls+=' big-zone';if(areaMap.get(k)===0)cls+=s>=.65?' core':' hot';}
+   if(derived.forced.has(k))cls+=' forced';
+  }
+  if(source[r][c]==='small')cls+=' small-confirmed';
+  if(selected&&selected[0]===r&&selected[1]===c)cls+=' selected';
+  html+=`<div class="${cls}" data-r="${r}" data-c="${c}" title="${cellTitle(r,c)}" style="left:${x}px;top:${y}px;transform:translate(-50%,-50%) rotate(45deg)"><span>${txt}</span></div>`;
+ }
+ html+='</div>';const el=document.getElementById('grid');el.innerHTML=html;
+ el.querySelectorAll('.cell').forEach(x=>{
+  const r=+x.dataset.r,c=+x.dataset.c;
+  x.onclick=e=>{if(e.ctrlKey)return clearMark(r,c);mark(r,c,2)};
+  x.oncontextmenu=e=>{e.preventDefault();if(e.ctrlKey)return clearMark(r,c);mark(r,c,1)};
+ });
+}
+function cellTitle(r,c){const k=key(r,c);if(derived.locks.has(k))return `${coord(r,c)} 锁定：${derived.locks.get(k).reason}`;if(board[r][c])return `${coord(r,c)} ${stateName(board[r][c])}，来源：${source[r][c]||'未知'}${source[r][c]==='small'?'（已小探确认）':''}`;if(derived.forced.has(k))return `${coord(r,c)} 必然为船（全部候选方案一致）`;return `${coord(r,c)} 推荐分数 ${Math.round((derived.scores[r]?.[c]||0)*100)}`;}
+function renderStatus(){const remain={};derived.remaining.forEach(l=>remain[l]=(remain[l]||0)+1);const candidate=derived.scores.flat().filter(x=>x>0).length,known=board.flat().filter(x=>x!==0).length;document.getElementById('progress').innerHTML=Object.keys(config).sort((a,b)=>b-a).map(l=>`<span class="badge ${(derived.progress[l]||0)>=config[l]?'done':''}">${l}×${config[l]}　${derived.progress[l]||0}/${config[l]}</span>`).join('');document.getElementById('status').innerHTML=`<div>剩余船型<br><b>${Object.keys(remain).sort((a,b)=>b-a).map(l=>`${l}×${remain[l]}`).join('、')||'无'}</b></div><div>已知事实格<br><b>${known}</b></div><div>候选区域<br><b>${candidate}</b></div><div>当前存档<br><b>${currentSaveName||'未命名'}</b></div>`;}
+function renderSuggestion(){
+ const el=document.getElementById('suggestion');
+ if(!derived.remaining.length){el.innerHTML='<b style="color:#9ff0ad">全部船只已经完成，无需继续探测。</b>';return;}
+ const forced=[...derived.forced].map(k=>{const[r,c]=k.split(',').map(Number);return coord(r,c)});
+ const a=derived.bigArea;let parts=[];
+ if(forced.length)parts.push(`<b style="color:#78ff9a">必然为船：</b>${forced.join('、')}<br><span class="hint">这些格在全部当前合法方案中均为船。</span>`);
+ if(a)parts.push(`<b>首选大探测区域：</b>${coord(a.r,a.c)}—${coord(a.r+a.size-1,a.c+a.size-1)}<br>棋盘上已用红/黄色边框直接标出。未知 ${a.unknown} 格；关联未完成船体 ${a.related} 格；近期重复权重 ${a.repeated}。<br><span class="hint">颜色越深，区域内的信息收益越高；每次录入后会立即重新计算。</span>`);
+ el.innerHTML=parts.join('<hr style="border-color:rgba(255,255,255,.15)">')||'<b>当前没有可行建议，请检查盘面是否存在冲突。</b>';
+}
+function renderBig(){
+ renderBigSession();
+ const e=document.getElementById('events');
+ e.innerHTML=bigEvents.slice().reverse().map(x=>`<div class="event"><b>大探测 #${x.seq}</b> ${x.time}<br>新增 ${x.added.length} 格；重复 ${x.repeated.length} 格；冲突 ${x.conflicts.length} 格</div>`).join('');
+ const a=derived.bigArea;
+ document.getElementById('bigRecommend').innerHTML=!derived.remaining.length
+  ?'<b style="color:#9ff0ad">全部船只已经完成，无需继续大探测。</b>'
+  :a?`<b>首选区域：</b>${coord(a.r,a.c)}—${coord(a.r+a.size-1,a.c+a.size-1)}<br>未知 ${a.unknown}；关联命中 ${a.related}；近期重复 ${a.repeated}；已小探确认 ${a.smallConfirmed}。<br><span class="hint">推荐区已经直接着色在棋盘上，无需只靠坐标寻找。</span>`
+  :'暂无区域建议';
+}
+function renderAll(){renderGrid();renderStatus();renderSuggestion();renderBig();renderLog();updateSaveStatus();}
+function setMode(x){mode=x;renderBigSession();}
+function startBigSession(){
+ if(bigSession)return toast('本次大探测已经开始','warn');
+ bigSession={before:factSnapshot(),started:new Date().toLocaleString('zh-CN'),added:[],repeated:[],conflicts:[],seen:new Set(),history:[]};
+ mode='big';addLog('operation','开始大探测',`第${bigEvents.length+1}次；请在棋盘上左键记录船、右键记录空。`);renderBigSession();
+}
+function markBigCell(r,c,v){
+ if(!bigSession)return toast('请先点击“开始本次大探测”','warn');
+ const k=key(r,c);
+ if(bigSession.seen.has(k)){
+  const idx=bigSession.history.findIndex(x=>x.r===r&&x.c===c);
+  if(idx>=0){
+   const rec=bigSession.history[idx];board[r][c]=rec.beforeV;source[r][c]=rec.beforeSource;
+   bigSession.history.splice(idx,1);bigSession.seen.delete(k);
+   bigSession.added=bigSession.added.filter(x=>!(x[0]===r&&x[1]===c));
+   bigSession.repeated=bigSession.repeated.filter(x=>!(x[0]===r&&x[1]===c));
+   bigSession.conflicts=bigSession.conflicts.filter(x=>!(x[0]===r&&x[1]===c));
+   recomputeAll('取消本次大探测单格');renderBigSession();return;
+  }
+ }
+ const beforeV=board[r][c],beforeSource=source[r][c];
+ bigSession.history.push({r,c,beforeV,beforeSource});bigSession.seen.add(k);
+ if(derived.locks.has(k)&&v===2)bigSession.conflicts.push([r,c,v,'locked']);
+ else if(board[r][c]===0){board[r][c]=v;source[r][c]='big';bigSession.added.push([r,c,v]);}
+ else if(board[r][c]===v)bigSession.repeated.push([r,c,v]);
+ else bigSession.conflicts.push([r,c,v,board[r][c]]);
+ recomputeAll('大探测会话记录');renderBigSession();
+}
+function confirmBigSession(){
+ if(!bigSession)return toast('尚未开始大探测','warn');
+ undoStack.push(bigSession.before);if(undoStack.length>100)undoStack.shift();redoStack=[];
+ bigEvents.push({seq:bigEvents.length+1,time:new Date().toLocaleString('zh-CN'),started:bigSession.started,added:deep(bigSession.added),repeated:deep(bigSession.repeated),conflicts:deep(bigSession.conflicts)});
+ addLog('operation','确认大探测',`第${bigEvents.length}次：新增${bigSession.added.length}格，重复${bigSession.repeated.length}格，冲突${bigSession.conflicts.length}格；新增位置：${bigSession.added.map(a=>coord(a[0],a[1])).join('、')||'无'}`);
+ bigSession=null;recomputeAll('确认大探测');autoInfer();renderBigSession();scheduleAutosave();
+}
+function cancelBigSession(){
+ if(!bigSession)return;const before=bigSession.before;bigSession=null;restoreFacts(before);addLog('operation','取消大探测','已撤销本次尚未确认的全部记录');renderBigSession();
+}
+function renderBigSession(){
+ const e=document.getElementById('bigSessionStatus'),start=document.getElementById('startBigBtn'),ok=document.getElementById('confirmBigBtn'),cancel=document.getElementById('cancelBigBtn');if(!e)return;
+ if(!bigSession){e.innerHTML='尚未开始本次大探测。点击“开始本次大探测”后，直接在棋盘连续记录结果，再统一确认。';start.disabled=false;ok.disabled=true;cancel.disabled=true;return;}
+ e.innerHTML=`<b>本次大探测进行中</b><br>新增 ${bigSession.added.length} 格；重复 ${bigSession.repeated.length} 格；冲突 ${bigSession.conflicts.length} 格。<br><span class="hint">建议区域会随本次结果即时更新。再次点击同一格可取消该格；“撤销”只撤销本次最后一格。</span>`;start.disabled=true;ok.disabled=false;cancel.disabled=false;
+}
+function clearEventHistory(){if(!bigEvents.length)return;pushUndo();bigEvents=[];addLog('operation','清空大探测事件','盘面事实保留，仅删除事件列表');renderBig();scheduleAutosave();}
+function renderConfig(){document.getElementById('configList').innerHTML=Object.keys(config).sort((a,b)=>b-a).map(l=>`<span class="config-item">${l}×<input type="number" min="0" max="10" data-len="${l}" value="${config[l]}" oninput="configPending()" onchange="applyConfig()"><button class="small danger" onclick="removeLength(${l})">×</button></span>`).join('');}
+function configPending(){const e=document.getElementById('configState');e.textContent='待同步';e.className='config-pending';}
+function applyConfig(){const n={};document.querySelectorAll('#configList input').forEach(x=>{const c=Math.max(0,+x.value||0);if(c)n[+x.dataset.len]=c});if(!Object.keys(n).length)n[2]=1;pushUndo();config=n;confirmedShips=[];document.getElementById('configState').textContent='已同步';document.getElementById('configState').className='config-ok';addLog('operation','同步船只配置',Object.entries(config).map(([l,c])=>`${l}×${c}`).join('、'));renderConfig();recomputeAll('配置修改');scheduleAutosave();}
+function addLength(){let l=2;while(config[l])l++;config[l]=1;renderConfig();configPending();}
+function removeLength(l){delete config[l];renderConfig();applyConfig();}
+document.getElementById('rows').onchange=()=>resizeBoard(+document.getElementById('rows').value,COLS);document.getElementById('cols').onchange=()=>resizeBoard(ROWS,+document.getElementById('cols').value);
+function resizeBoard(nr,nc){nr=Math.max(3,Math.min(20,nr||10));nc=Math.max(3,Math.min(20,nc||10));for(let r=nr;r<ROWS;r++)if(board[r]?.some(v=>v!==0))return toast('要删除的行中存在已知信息','warn');for(let r=0;r<Math.min(nr,ROWS);r++)for(let c=nc;c<COLS;c++)if(board[r][c]!==0)return toast('要删除的列中存在已知信息','warn');pushUndo();const nb=Array.from({length:nr},(_,r)=>Array.from({length:nc},(_,c)=>board[r]?.[c]||0)),ns=Array.from({length:nr},(_,r)=>Array.from({length:nc},(_,c)=>source[r]?.[c]||''));ROWS=nr;COLS=nc;board=nb;source=ns;confirmedShips=[];document.getElementById('rows').value=ROWS;document.getElementById('cols').value=COLS;addLog('operation','调整棋盘',`${ROWS}×${COLS}`);recomputeAll('调整尺寸');scheduleAutosave();}
+function resetGame(){if(board.length&&board.flat().some(v=>v))pushUndo();ROWS=+document.getElementById('rows').value||10;COLS=+document.getElementById('cols').value||10;initBoard();confirmedShips=[];bigEvents=[];bigSession=null;currentSaveName=null;selected=null;logs={summary:[]};addLog('operation','重置棋盘',`${ROWS}×${COLS}`);recomputeAll('重置');scheduleAutosave();}
+function addLog(type,title,detail,cls=''){
+ const important=new Set(['确认大探测','自动确认整船','确定性推断','完成进度变化','冲突','读取存档','另存为','覆盖保存','重置棋盘','调整棋盘','同步船只配置','小探确认']);
+ if(title==='开始大探测'||title==='信息'||title==='标记为船'||title==='标记为空'||title==='取消船格'||title==='取消空格'||title==='提示')return;
+ if(!important.has(title)&&type!=='state'&&type!=='reasoning')return;
+ logs.summary=logs.summary||[];
+ const last=logs.summary[logs.summary.length-1];
+ if(last&&last.title===title&&title==='完成进度变化')last.detail=detail;
+ else logs.summary.push({time:new Date().toLocaleTimeString('zh-CN',{hour12:false}),title,detail,cls});
+ if(logs.summary.length>200)logs.summary.shift();renderLog();
+}
+function showLog(){renderLog();}
+function renderLog(){const box=document.getElementById('logbox');const arr=logs.summary||[];box.innerHTML=arr.slice().reverse().map(x=>`<div class="entry ${x.cls||''}"><b>${x.time} ${x.title}</b><br>${x.detail}</div>`).join('')||'<div class="hint">暂无摘要。系统只记录大探测结果、自动推断、进度变化和异常。</div>';}
+function aiLogText(){
+ const header=`# ShipSolver ${VERSION} | ${ROWS}×${COLS} | 船只 ${Object.entries(config).map(([l,c])=>`${l}×${c}`).join(' ')} | 坐标从1开始`;
+ const events=bigEvents.map(x=>`大探测#${x.seq}：新增${x.added.length}，重复${x.repeated.length}，冲突${x.conflicts.length}`).join('\n')||'无';
+ const summary=(logs.summary||[]).map((x,i)=>`${i+1}. [${x.time}] ${x.title} | ${x.detail}`).join('\n')||'无';
+ const a=derived.bigArea;
+ return `${header}
+
+## 大探测批次
+${events}
+
+## 关键摘要
+${summary}
+
+## 当前状态
+完成：${JSON.stringify(derived.progress)}
+剩余：${derived.remaining.join(',')||'无'}
+建议大探测：${a?coord(a.r,a.c)+' 至 '+coord(a.r+a.size-1,a.c+a.size-1):'无'}`;
+}
+function copyAILog(){navigator.clipboard?.writeText(aiLogText()).then(()=>toast('AI 日志已复制')).catch(()=>fallbackCopy(aiLogText()));}
+function fallbackCopy(t){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();toast('AI 日志已复制');}
+function exportLog(){download('ShipSolver_log.txt',aiLogText(),'text/plain');}
+function toast(msg,cls=''){addLog(cls==='warn'?'reasoning':'operation',cls==='warn'?'提示':'信息',msg,cls);}
+function getSaves(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')}catch{return{}}}
+function setSaves(x){localStorage.setItem(SAVE_KEY,JSON.stringify(x));}
+function saveData(){return{version:VERSION,ROWS,COLS,board:deep(board),source:deep(source),config:{...config},confirmedShips:[...confirmedShips],bigEvents:deep(bigEvents),logs:deep(logs),ts:new Date().toISOString()};}
+function migrate(d){return{version:d.version||'legacy',ROWS:d.ROWS||d.rows||10,COLS:d.COLS||d.cols||10,board:deep(d.board||d.m||[]),source:deep(d.source||d.cellSource||[]),config:{...(d.config||{2:1})},confirmedShips:[...(d.confirmedShips||[])],bigEvents:deep(d.bigEvents||d.bigDetectHistory||[]),logs:d.logs?.summary?d.logs:{summary:[...(d.logs?.operation||[]),...(d.logs?.reasoning||[]),...(d.logs?.state||[])]},ts:d.ts||new Date().toISOString()};}
+function loadData(d,name=null){const x=migrate(d);ROWS=x.ROWS;COLS=x.COLS;board=x.board;source=x.source.length?x.source:Array.from({length:ROWS},()=>Array(COLS).fill(''));config=x.config;confirmedShips=x.confirmedShips;bigEvents=x.bigEvents;logs=x.logs;currentSaveName=name;selected=null;document.getElementById('rows').value=ROWS;document.getElementById('cols').value=COLS;renderConfig();recomputeAll('读取存档');addLog('operation','读取存档',name||'导入文件');scheduleAutosave();}
+function saveCurrent(){if(!currentSaveName)return toast('当前是未命名盘面，请使用“另存为”','warn');const s=getSaves();s[currentSaveName]=saveData();setSaves(s);addLog('operation','覆盖保存',currentSaveName);renderSaveList();updateSaveStatus();}
+function saveAs(){const n=document.getElementById('saveName').value.trim();if(!n)return toast('请输入存档名称','warn');const s=getSaves();if(s[n]&&!confirm(`存档“${n}”已存在，是否覆盖？`))return;s[n]=saveData();setSaves(s);currentSaveName=n;document.getElementById('saveName').value='';addLog('operation','另存为',n);renderSaveList();updateSaveStatus();scheduleAutosave();}
+function loadSave(n){const s=getSaves();if(s[n])loadData(s[n],n);closeSaves();}
+function deleteSave(n){if(!confirm(`删除存档“${n}”？`))return;const s=getSaves();delete s[n];setSaves(s);if(currentSaveName===n)currentSaveName=null;renderSaveList();updateSaveStatus();}
+function renderSaveList(){const s=getSaves(),el=document.getElementById('saveList'),names=Object.keys(s).sort((a,b)=>(s[b].ts||'').localeCompare(s[a].ts||''));el.innerHTML=names.map(n=>`<div class="save-row"><div class="save-main"><b>${escapeHtml(n)}${n===currentSaveName?' [当前]':''}</b><br><span class="hint">${new Date(s[n].ts).toLocaleString('zh-CN')} · ${s[n].ROWS}×${s[n].COLS}</span></div><button class="small" onclick='loadSave(${JSON.stringify(n)})'>读取</button><button class="small danger" onclick='deleteSave(${JSON.stringify(n)})'>删除</button></div>`).join('')||'<p class="hint">暂无命名存档</p>';}
+function updateSaveStatus(){const e=document.getElementById('currentSave'),b=document.getElementById('saveCurrentBtn');if(!e)return;e.innerHTML=currentSaveName?`当前存档：<b>${escapeHtml(currentSaveName)}</b>；“保存当前”将覆盖该存档。`:'当前为未命名盘面，请使用“另存为”创建存档。';b.disabled=!currentSaveName;}
+function openSaves(){renderSaveList();updateSaveStatus();document.getElementById('saveModal').classList.add('show');}
+function closeSaves(){document.getElementById('saveModal').classList.remove('show');}
+function exportCurrent(){download(`${currentSaveName||'ShipSolver_save'}.json`,JSON.stringify(saveData(),null,2),'application/json');}
+function exportAll(){download('ShipSolver_saves.json',JSON.stringify(getSaves(),null,2),'application/json');}
+function importJSON(ev){const f=ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(d.board||d.m)loadData(d,null);else{const s=getSaves();for(const[n,x]of Object.entries(d))if(x&&(x.board||x.m))s[n]=migrate(x);setSaves(s);renderSaveList();toast('已导入存档集合');}}catch(e){toast('JSON 解析失败：'+e.message,'warn')}};rd.readAsText(f);ev.target.value='';}
+function scheduleAutosave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>localStorage.setItem(AUTO_KEY,JSON.stringify(saveData())),250);}
+function loadAutosave(){const keys=[AUTO_KEY,...LEGACY_AUTO_KEYS];for(const k of keys){try{const d=JSON.parse(localStorage.getItem(k)||'null');if(d){loadData(d,null);if(k!==AUTO_KEY)localStorage.setItem(AUTO_KEY,JSON.stringify(saveData()));addLog('operation','自动恢复',k===AUTO_KEY?'已恢复上次未命名工作区':'已迁移并恢复旧版本自动保存');return true}}catch{}}return false;}
+function download(name,text,type){const b=new Blob([text],{type}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo()}else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo()}});
+renderConfig();if(!loadAutosave())resetGame();setMode('small');renderBigSession();
+</script></body></html>
