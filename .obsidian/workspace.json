@@ -1,0 +1,232 @@
+{
+  "main": {
+    "id": "f83fe04522279a10",
+    "type": "split",
+    "children": [
+      {
+        "id": "67af5b542011a359",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4dac913a26392552",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "README.md",
+                "mode": "source",
+                "source": false,
+                "backlinks": true,
+                "backlinkOpts": {
+                  "collapseAll": false,
+                  "extraContext": false,
+                  "sortOrder": "alphabetical",
+                  "showSearch": false,
+                  "searchQuery": "",
+                  "backlinkCollapsed": false,
+                  "unlinkedCollapsed": true
+                }
+              },
+              "icon": "lucide-file",
+              "title": "README"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "fcf2cc9052b4662d",
+    "type": "split",
+    "children": [
+      {
+        "id": "aa11911206c6bda5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ae5493e8c152b438",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "9a692857f181cc85",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "5ffa8d946b4fba4e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "right": {
+    "id": "f3c31e02d98689bb",
+    "type": "split",
+    "children": [
+      {
+        "id": "1d0af42b7a90abee",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7e01f56634b60bac",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "与我的小宝贝交流的专用文件.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "与我的小宝贝交流的专用文件 的反向链接列表"
+            }
+          },
+          {
+            "id": "2d8eaf1041250326",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "数学全体系思维导图.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "数学全体系思维导图 的出链列表"
+            }
+          },
+          {
+            "id": "3b1adc1d19d3424f",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "1625a788816ce1b8",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "README.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "README 的大纲"
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "markdown-importer:打开 Markdown 格式转换器": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "4dac913a26392552",
+  "lastOpenFiles": [
+    "qr.png",
+    "未命名 1.md",
+    "关于海岛奇兵更新.md",
+    "与我的小宝贝交流的专用文件.md",
+    "与我的小宝贝交流的专用文件 1.md",
+    "随手 记.md",
+    "数学全体系思维导图.md",
+    "1.md",
+    "身体状态.md",
+    "手机号注册软件记录.md",
+    "计算机网络功能.md",
+    "2/招笑弹幕（无皆）.md",
+    "2/招笑弹幕（小泡芙）.md",
+    "火电厂运维/巡检操作大致步骤.md",
+    "其他/有关打字练习的建议.md",
+    "其他/种花日记（玉树）.md",
+    "其他/keep设备日记.md",
+    "问题.md",
+    "未命名 2.md",
+    "未命名 3.md",
+    "01-爬虫的基本知识.md - 快捷方式.lnk",
+    "01-爬虫的基本知识.md",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsrsasign/yahoo.js",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsrsasign/asn1-1.0.js",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/util.js",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/util.d.ts",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/rsa.js",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/rsa.d.ts",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/rng.js",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/prng4.d.ts",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/lib/lib/jsbn/rng.d.ts",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821214608114.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821181840088.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821180249172.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821173356886.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821173358041.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821165704121.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821172434242.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821165525414.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821165524350.png",
+    "资料/Phthon教程/day6webpack打包专题-第二天打卡获取/images/image-20220821165403730.png",
+    "资料/Phthon教程/day5非对称加密算法下-零基础先不要看课件 直接看入门视频先/jsencrypt/README.md",
+    "资料/Phthon教程/win10工具包-工具不会安装找何老师指导/nodejs安装教程.md",
+    "资料/Phthon教程/day9cookie逆向反爬-第二天打卡获取/cookie反爬虫.md",
+    "资料/Phthon教程/day8OB混淆专题-第二天打卡获取/ob混淆题讲解.md",
+    "资料/Phthon教程/day7SM国密加密算法-第二天打卡获取/国密.md"
+  ]
+}
