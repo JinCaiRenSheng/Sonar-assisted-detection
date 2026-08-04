@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17365f">
-<title>ShipSolver v2.3.4 桌面/手机双模式版</title>
+<title>ShipSolver v2.4.6 桌面/手机双模式版</title>
 <style>
 /* ================================================================
    CSS 变量 —— 统一管理所有颜色和尺寸
@@ -106,14 +106,27 @@ input,select,textarea{
 .modal{width:min(720px,96vw);max-height:90vh;overflow:auto;background:#182b40;border:1px solid var(--border);border-radius:13px;padding:16px}
 .modal h3{margin-top:0}.btn-row{display:flex;gap:6px;flex-wrap:wrap}.save-row{display:flex;gap:7px;align-items:center;padding:7px;border:1px solid var(--border);border-radius:7px;margin-top:6px}.save-main{flex:1}
 .mobile-actions{display:none}
+.corner-btn{position:absolute;z-index:5;width:44px;height:40px;padding:0;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+html[data-corner=off] .corner-btn{display:none!important}
+html[data-mode=desktop][data-corner=on] .corner-dup{display:none!important}
+#gridViewport{position:relative;will-change:transform;contain:paint}   /* 棋盘独立合成层：滚动时不反复重绘 */
 .import-label{display:inline-flex;align-items:center;gap:2px;border:0;border-radius:7px;padding:.5em .85em;background:#697480;color:#fff;font-weight:700;cursor:pointer;min-height:34px;font-size:inherit}
 .import-label input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.save-group-title{font-size:13px;font-weight:700;margin-bottom:5px;padding:7px 9px;border-radius:7px;background:rgba(0,0,0,.24)}
+.save-group-title.cur{color:#9ef0b8;background:rgba(47,158,85,.16);border:1px solid rgba(47,158,85,.35)}
+.cur-tag{font-size:11px;color:#9ef0b8;font-weight:800;margin-left:2px}
+.cur-disc{font-size:11px;color:#ffd95a;font-weight:800;margin-left:4px;padding:1px 6px;border-radius:4px;background:rgba(255,217,90,.12)}
+.st-done{color:#78ff9a;font-weight:700}
+.st-ongoing{color:#7cc0ff;font-weight:700}
+#saveList .hint{font-size:11px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:200;background:rgba(0,0,0,.86);padding:9px 16px;border-radius:8px;font-size:12px;max-width:90%;text-align:center}
 /* ================================================================
    手机排版（作用域：html[data-mode=mobile]，与桌面排版完全隔离）
    电脑排版样式保持原样，本块只在手机模式生效
    ================================================================ */
 html[data-mode=mobile] body{padding:8px}
+/* 移动端去掉毛玻璃模糊：滚动/重绘性能大幅提升（平板卡顿主因之一） */
+html[data-mode=mobile] .panel{backdrop-filter:none;-webkit-backdrop-filter:none}
 html[data-mode=mobile] h1{font-size:19px;margin-bottom:2px}
 html[data-mode=mobile] .subtitle{font-size:11px;margin-bottom:8px}
 html[data-mode=mobile] .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:13px}
@@ -122,6 +135,14 @@ html[data-mode=mobile] .controls .badge{grid-column:1/-1;text-align:center}
 html[data-mode=mobile] .layout{grid-template-columns:1fr;gap:10px}
 html[data-mode=mobile] .grid-area{grid-template-columns:1fr;gap:8px}
 html[data-mode=mobile] .grid-wrap{min-height:0;overflow:hidden}
+/* 四角按钮：所有设备按开关显示；手机小窗用小号按钮，手机横屏矮窗隐藏 */
+@media (max-width:600px){
+  html[data-mode=mobile] .corner-btn{width:34px;height:34px;min-height:34px;font-size:12px;border-radius:8px}
+}
+@media (max-height:520px){ html[data-device=phone] .corner-btn{display:none!important} }
+@media (min-width:601px) and (min-height:501px){
+  html[data-mode=mobile][data-corner=on] .corner-dup{display:none!important}
+}
 html[data-mode=mobile] .mobile-actions{display:block;order:1;padding:8px 10px}
 html[data-mode=mobile] .ma-row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px}
 html[data-mode=mobile] .ma-row:last-child{margin-bottom:0}
@@ -138,10 +159,10 @@ html[data-mode=mobile] .accordion-header{min-height:42px;font-size:14px}
 html[data-mode=mobile] .accordion-body{display:none}
 html[data-mode=mobile] .accordion-body.open{display:block}
 html[data-mode=mobile] .accordion-body#suggestionBody{display:block}
-/* 平板横屏（宽 >820px 且触屏）：手机排版的宽屏形态，双栏 */
+/* 平板宽屏（>820px 触屏）：双栏；手机（含横屏）一律单栏 */
 @media (min-width:821px){
-  html[data-mode=mobile] .layout{grid-template-columns:minmax(0,1fr) 280px}
-  html[data-mode=mobile] .grid-area{grid-template-columns:1fr}
+  html[data-mode=mobile][data-device=tablet] .layout{grid-template-columns:minmax(0,1fr) 280px}
+  html[data-mode=mobile][data-device=tablet] .grid-area{grid-template-columns:1fr}
 }
 html[data-mode=mobile] .modal-bg{padding:0}
 html[data-mode=mobile] .modal{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;padding:14px}
@@ -150,6 +171,15 @@ html[data-mode=mobile] .save-row{flex-wrap:wrap}
 html[data-mode=mobile] .toast{font-size:13px;padding:11px 16px;bottom:max(12px,env(safe-area-inset-bottom))}
 html[data-mode=mobile] .cell .coord{font-size:7px}
 html[data-mode=mobile] .cell .mark{font-size:11px;font-weight:800}
+/* 手机/平板：减轻格子阴影（降低重绘成本，视觉更清爽） */
+html[data-mode=mobile] .cell.ship{box-shadow:inset 0 0 0 1px rgba(255,255,255,.45)}
+html[data-mode=mobile] .cell.possible{box-shadow:inset 0 0 0 1px rgba(255,215,0,.45)}
+html[data-mode=mobile] .cell.high{box-shadow:inset 0 0 0 2px rgba(255,195,0,.8)}
+html[data-mode=mobile] .cell.top2{box-shadow:inset 0 0 0 1px rgba(255,195,0,.45)}
+html[data-mode=mobile] .cell.top3{box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+html[data-mode=mobile] .cell.forced{box-shadow:inset 0 0 0 2px #78ff9a}
+html[data-mode=mobile] .cell.big-area{box-shadow:inset 0 0 0 1px rgba(90,176,255,.6)}
+html[data-mode=mobile] .cell.selected{outline:2px solid #fff}
 html[data-mode=mobile] .cell.rec1 .mark{color:#ffd95a}
 html[data-mode=mobile] .cell.rec2 .mark{color:#e8c96a}
 html[data-mode=mobile] .cell.rec3 .mark{color:#cfd8e3}
@@ -168,12 +198,12 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 </head>
 <body>
 <div class="container">
-<h1>🚢 ShipSolver v2.3.4 桌面/手机双模式版</h1>
+<h1>🚢 ShipSolver v2.4.6 桌面/手机双模式版</h1>
 <div class="subtitle">多策略评分 · 信息增益 · 自动确认</div>
 
 <div class="panel controls" id="topControls">
-  <button class="secondary" id="markModeBtn" onclick="App.toggleMarkMode()" style="display:none">●标船</button>
-  <button class="secondary" onclick="App.undo()">↶撤销</button>
+  <button class="secondary corner-dup" id="markModeBtn" onclick="App.toggleMarkMode()" style="display:none">●标船</button>
+  <button class="secondary corner-dup" id="topUndoBtn" onclick="App.undo()">↶撤销</button>
   <button onclick="App.openBoardSettings()">棋盘与配置</button>
   <button class="secondary" onclick="App.resetGame()">重置</button>
   <button class="secondary" onclick="App.openSaves()">💾存读档</button>
@@ -200,15 +230,21 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
         <div class="quick-btn"><button onclick="App.confirmSelectedShip()">🔒确认整船</button></div>
       </div>
     </div>
-    <div class="panel grid-wrap" id="gridWrap"><div id="gridViewport"><div id="grid" class="diamond"></div></div></div>
+    <div class="panel grid-wrap" id="gridWrap"><div id="gridViewport">
+      <div id="grid" class="diamond"></div>
+      <button class="corner-btn" id="cornerUndo" onclick="App.undo()" title="撤销">↶</button>
+      <button class="corner-btn" id="cornerMark" onclick="App.toggleMarkMode()" title="标船/标空切换">●船</button>
+      <button class="corner-btn" id="cornerConfirm" onclick="App.confirmSelectedShip()" title="确认整船">🔒</button>
+      <button class="corner-btn" id="cornerBig" onclick="App.cornerBigAction()" title="开始/确认大探测">大探测</button>
+    </div></div>
     <div class="panel mobile-actions" id="mobileActions">
       <div class="ma-row">
         <button class="secondary" onclick="App.undo()">↶撤销</button>
-        <button class="secondary" id="markModeBtnM" onclick="App.toggleMarkMode()">●标船</button>
+        <button class="secondary corner-dup" id="markModeBtnM" onclick="App.toggleMarkMode()">●标船</button>
       </div>
       <div class="ma-row">
-        <button onclick="App.confirmSelectedShip()">🔒确认整船</button>
-        <button id="startBigBtnM" onclick="App.startBig()">开始大探测</button>
+        <button class="corner-dup" id="confirmShipBtnM" onclick="App.confirmSelectedShip()">🔒确认整船</button>
+        <button class="corner-dup" id="startBigBtnM" onclick="App.startBig()">开始大探测</button>
       </div>
       <div class="ma-row">
         <button id="confirmBigBtnM" onclick="App.confirmBig()" disabled>确认本次</button>
@@ -251,7 +287,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
   </label>
   <button class="secondary" onclick="App.openSettings()">期管理</button>
 </div>
-<div class="btn-row"><input id="saveName" placeholder="存档名称"><button onclick="App.saveCurrent()">保存</button><button class="secondary" onclick="App.exportAll()">导出全部</button><label class="import-label">导入<input id="importFile" type="file" accept=".json,application/json" onchange="App.importJSON(event)"></label></div><div id="saveList"></div><div class="hint" style="margin-top:6px">📋 下面列出<b>所有期</b>的存档（📌=当前期，🕘=往期），可直接读取/删除任意存档。<b style="color:#78ff9a">【当前】</b>=属于当前期的存档，<b style="color:#78ff9a">【当前盘】</b>=当前正在使用的存档。新保存会存入上方所选期。导出全部=备份所有期，导入=恢复备份，不丢历史数据。</div><div style="text-align:right;margin-top:10px"><button class="secondary" onclick="App.closeModal('saveModal')">关闭</button></div>
+<div class="btn-row"><input id="saveName" placeholder="存档名称"><button onclick="App.saveCurrent()">保存</button><button class="secondary" onclick="App.exportAll()">导出全部</button><label class="import-label">导入<input id="importFile" type="file" accept=".json,application/json" onchange="App.importJSON(event)"></label></div><div id="saveList"></div><div id="autoslotList"></div><div class="hint" style="margin-top:6px">📋 下面列出<b>所有期</b>的存档（📌=当前期绿色标题，🕘=往期），可直接读取/删除任意存档。<b class="cur-disc">当前盘</b>=当前正在使用的存档。新保存会存入上方所选期。导出全部=备份所有期，导入=恢复备份，不丢历史数据。</div><div style="text-align:right;margin-top:10px"><button class="secondary" onclick="App.closeModal('saveModal')">关闭</button></div>
 </div></div>
 
 <div id="settingsModal" class="modal-bg" onclick="if(event.target===this)App.closeModal('settingsModal')"><div class="modal">
@@ -269,6 +305,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 <label><input id="useHistoryPrior" type="checkbox" onchange="App.setHistory(this.checked)"> 启用历史先验 <span id="historyInfo" class="hint"></span></label>
 <div style="margin-top:10px">历史权重 <input id="historyWeight" type="range" min="0" max="50" value="20" oninput="App.setHistoryWeight(this.value)"> <span id="weightDisplay">0.20</span></div>
 <label style="display:block;margin-top:10px"><input id="showHeatmap" type="checkbox" onchange="App.setHeatmap(this.checked)"> 显示概率热力图（棋盘常态，蓝→红 = 相对船概率）</label>
+<label style="display:block;margin-top:10px"><input id="showCoordsChk" type="checkbox" onchange="App.setShowCoords(this.checked)"> 显示格子坐标号（如 1,1，看不清时可关闭）</label>
 <div style="margin-top:12px;border-top:1px solid #333;padding-top:8px">
   手机/电脑排版：<select id="modeSelect" onchange="App.setForcedMode(this.value)">
     <option value="auto">自动</option>
@@ -277,6 +314,8 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
   </select>
   <div class="hint">自动=按屏幕宽度和设备自动切换；强制可锁死某一种排版，方便测试。</div>
 </div>
+<label style="display:block;margin-top:10px"><input id="cornerBtnsChk" type="checkbox" onchange="App.setCornerBtns(this.checked)"> 启用棋盘快捷按钮（电脑/平板，四角）</label>
+<div class="hint">开启后四角显示快捷按钮，并把重复的顶栏/快捷条按钮收起；关闭即恢复传统布局。手机不显示四角，不受影响。</div>
 <div class="btn-row" style="margin-top:12px"><button class="danger" onclick="App.clearAllSaves()">清空所有存档</button><button class="secondary" onclick="App.closeModal('settingsModal')">关闭</button></div>
 </div></div>
 
@@ -312,7 +351,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 • 每期可存多盘，列表显示时间/尺寸/配置<br>
 • 「导出全部」备份所有期，「导入」恢复<br>
 • 自动兼容旧版存档格式，不丢数据<br><br>
-• 当前期下的存档标【当前】，正在使用的存档另标【当前盘】<br>
+• 当前期用绿色标题标出，正在使用的存档标金色「当前盘」<br>
 <b>📋 日志与反馈：</b><br>
 • 顶栏「反馈」导出 JSON：含当前盘面+操作日志+推理日志+推荐统计<br>
 • 操作日志记录每次标记及是否采纳推荐<br>
@@ -337,7 +376,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 const App = (function() {
 'use strict';
 
-const VERSION = '2.3.4';
+const VERSION = '2.4.6';
 const SAVE_FORMAT = 2;
 const SAVE_KEY = 'shipsolver_saves';
 const AUTO_KEY = 'shipsolver_autosave_v2_0_0';
@@ -364,9 +403,12 @@ const S = {
     consecutiveMisses: 0,
     startedAt: null,   // 本局开始时间（用于导出"本局时长"）
     showHeatmap: true,   // 棋盘常态显示概率热力图（相对船概率渐变）
+    showCoords: true,    // 格子坐标号显示开关（看不清时可在设置里关闭）
     forcedMode: 'auto',   // 排版模式：'auto' 自动 | 'desktop' 强制电脑 | 'mobile' 强制手机
+    cornerBtns: true,     // 棋盘四角快捷按钮开关（电脑/平板）
     markMode: 'ship',     // 手机排版输入：'ship' 标船 | 'empty' 标空
     mode: 'desktop',      // 当前生效排版：'desktop' | 'mobile'
+    device: 'desktop',    // 设备类型：'desktop' | 'tablet' | 'phone'
     stats: {recGiven:0, recFollowed:0, recHit:0},
     autoArchived: false,   // 本盘完成是否已自动归档（每盘只存一次）
     derived: {}
@@ -388,7 +430,7 @@ function snap() {
         consecutiveMisses: S.consecutiveMisses,
         finished: !!(S.derived && S.derived.gameFinished),   // 供恢复时判断是否已完成
         stats: clone(S.stats),   // 推荐统计跨会话持久化，便于评估推荐质量
-        logs: {actions: S.logs.actions.slice(-50), reasoning: S.logs.reasoning.slice(-50)}  // 最近日志可反查
+        logs: {actions: S.logs.actions.slice(-10), reasoning: S.logs.reasoning.slice(-10)}  // 轻量快照（完整日志在独立会话存储）
     };
 }
 function restore(x) {
@@ -397,6 +439,9 @@ function restore(x) {
         x.rows < 3 || x.rows > 10 || x.cols < 3 || x.cols > 10 ||
         !Array.isArray(x.board) || x.board.length !== x.rows) {
         console.warn('ShipSolver: 存档数据损坏，使用新棋盘');
+        // 损坏数据自动备份，避免修复时把玩家数据弄丢
+        try { localStorage.setItem('shipsolver_corrupt_backup', JSON.stringify(x)); } catch(e) {}
+        try { toast('⚠️ 检测到损坏存档，已自动备份并改用新棋盘'); } catch(_) {}
         initFresh(); return;
     }
     Object.assign(S, {
@@ -413,18 +458,77 @@ function restore(x) {
         stats: (x.stats && typeof x.stats === 'object') ?
             {recGiven: x.stats.recGiven || 0, recFollowed: x.stats.recFollowed || 0, recHit: x.stats.recHit || 0} :
             {recGiven: 0, recFollowed: 0, recHit: 0},
-        logs: (x.logs && typeof x.logs === 'object') ?
-            {actions: Array.isArray(x.logs.actions) ? x.logs.actions.slice(-50) : [], reasoning: Array.isArray(x.logs.reasoning) ? x.logs.reasoning.slice(-50) : []} :
-            {actions: [], reasoning: []}
     });
     compute(); render();
 }
-function push() { S.undo.push(snap()); if (S.undo.length > 100) S.undo.shift(); S.redo = []; }
+// ===== B 档：撤销栈持久化（重启后仍可回退，保留最近 30 步）=====
+const UNDO_KEY = 'shipsolver_undolog_v1';
+let undoFlushTimer = null;
+function saveUndoStack() {
+    clearTimeout(undoFlushTimer);
+    undoFlushTimer = setTimeout(() => {
+        undoFlushTimer = null;
+        try { localStorage.setItem(UNDO_KEY, JSON.stringify({ u: S.undo.slice(-30), r: S.redo.slice(-30) })); } catch(e) {}
+    }, 300);
+}
+function flushUndoNow() {
+    if (undoFlushTimer) { clearTimeout(undoFlushTimer); undoFlushTimer = null; }
+    try { localStorage.setItem(UNDO_KEY, JSON.stringify({ u: S.undo.slice(-30), r: S.redo.slice(-30) })); } catch(e) {}
+}
+function loadUndoStack() {
+    try {
+        const d = JSON.parse(localStorage.getItem(UNDO_KEY) || '{}');
+        if (Array.isArray(d.u)) S.undo = d.u.slice(-30);
+        if (Array.isArray(d.r)) S.redo = d.r.slice(-30);
+    } catch(e) {}
+}
+function push() { S.undo.push(snap()); if (S.undo.length > 100) S.undo.shift(); S.redo = []; saveUndoStack(); }
 function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
 // rec = 预测与实际对应：{r, c, followed, hit}（推荐格坐标、是否被探、是否命中船）
-function logAct(type, detail, rec) { S.logs.actions.push({time: new Date().toISOString(), type, detail, rec: rec || null}); if (S.logs.actions.length > 200) S.logs.actions.shift(); }
-function logRea(detail) { let last = S.logs.reasoning[S.logs.reasoning.length-1]; if (last && last.detail === detail) return; S.logs.reasoning.push({time: new Date().toISOString(), detail}); if (S.logs.reasoning.length > 100) S.logs.reasoning.shift(); }
+// ===== 存储适配层（为 C 档 IndexedDB 预留）=====
+// 接口约定：get(key, def) / set(key, val) / remove(key) 均为 Promise。
+// 当前用 localStorage 实现；C 档换成 IndexedDB 实现即可，业务代码不用改。
+const StorageBackend = {
+    get(key, def) {
+        try { const v = localStorage.getItem(key); return Promise.resolve(v === null ? def : JSON.parse(v)); }
+        catch(e) { return Promise.resolve(def); }
+    },
+    set(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+        return Promise.resolve();
+    },
+    remove(key) {
+        try { localStorage.removeItem(key); } catch(e) {}
+        return Promise.resolve();
+    }
+};
+// ===== A 档：日志按会话分段独立存储（与存档分离，保留最近 5 段）=====
+const LOG_STORE_KEY = 'shipsolver_logs_v1';
+let logSession = { id: 's0', t: new Date().toISOString(), actions: [], reasoning: [] };
+let logFlushTimer = null;
+function newLogSession() {
+    logSession = { id: 's' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), t: new Date().toISOString(), actions: S.logs.actions, reasoning: S.logs.reasoning };
+}
+function saveLogSessions() {
+    let sessions = [];
+    try { sessions = JSON.parse(localStorage.getItem(LOG_STORE_KEY) || '[]'); } catch(e) {}
+    sessions = sessions.filter(s => s.id !== logSession.id);
+    sessions.push({ id: logSession.id, t: logSession.t, actions: logSession.actions.slice(-2000), reasoning: logSession.reasoning.slice(-1000) });
+    while (sessions.length > 5) sessions.shift();
+    try { localStorage.setItem(LOG_STORE_KEY, JSON.stringify(sessions)); } catch(e) {}
+}
+function scheduleLogFlush() { clearTimeout(logFlushTimer); logFlushTimer = setTimeout(saveLogSessions, 1000); }
+function flushLogsNow() { clearTimeout(logFlushTimer); logFlushTimer = null; saveLogSessions(); }
+const LOG_TYPES = {'mark_ship':'标记船','mark_empty':'标记空','cancel':'取消标记','confirm_right':'右键确认船','confirm_btn':'按钮确认船','big_confirm':'大探测确认','game_finished':'本局完成','js_error':'页面错误'};
+function logAct(type, detail, rec) {
+    type = LOG_TYPES[type] || type;   // 旧英文标识统一转中文，日志更易读
+    S.logs.actions.push({time: new Date().toISOString(), type, detail, rec: rec || null});
+    if (S.logs.actions.length > 2000) S.logs.actions.shift();
+    scheduleLogFlush();
+}
+function logRea(detail) { let last = S.logs.reasoning[S.logs.reasoning.length-1]; if (last && last.detail === detail) return; S.logs.reasoning.push({time: new Date().toISOString(), detail}); if (S.logs.reasoning.length > 1000) S.logs.reasoning.shift(); scheduleLogFlush(); }
 function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+function fileStamp() { const d = new Date(), pad = n => String(n).padStart(2, '0'); return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()); }
 
 // ==================================================================
 // 求解器（SOLVER）—— 程序的大脑
@@ -700,6 +804,7 @@ function autoConfirm(bs, placements, progress) {
 
 // 主推理函数：串联全部步骤
 function compute() {
+    const t0 = performance.now();
     // 计算当前剩余船型列表（排除已完成/已确认的船）
     function remOf(lp) {
         const rem = [];
@@ -813,6 +918,7 @@ function compute() {
     }
     if (highConf.size) rea += ' 高置信' + highConf.size + '格';
     if (gameFinished) rea += ' ✓完成';
+    rea += ' 耗时' + Math.round(performance.now() - t0) + 'ms';
     logRea(rea);
 
     // 船概率矩阵（用于大探测热力图：被合法方案覆盖的比例）
@@ -849,73 +955,154 @@ function responsiveCell() {
     return Math.max(22, Math.min(68, size || 30));
 }
 
+let gridCells = [];   // 格子元素缓存（增量渲染：复用元素，只更新变化部分）
 function renderGrid() {
-    const grid = $('grid'); grid.innerHTML = '';
-    let cell = responsiveCell(); document.documentElement.style.setProperty('--cell-size', cell + 'px');
+    const t0 = performance.now();
+    const grid = $('grid');
+    let cell = responsiveCell();
+    document.documentElement.style.setProperty('--cell-size', cell + 'px');
     const w = (S.cols + S.rows) * cell / Math.SQRT2, h = w;
-    grid.style.width = w + 'px'; grid.style.height = h + 'px';
+    if (grid.style.width !== w + 'px') { grid.style.width = w + 'px'; grid.style.height = h + 'px'; }
+    // 行列数变化时重建缓存
+    if (gridCells.length !== S.rows || (gridCells[0] && gridCells[0].length !== S.cols)) {
+        grid.innerHTML = '';
+        gridCells = Array.from({length: S.rows}, () => new Array(S.cols));
+    }
 
     for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
-        let d = document.createElement('div'); d.className = 'cell';
+        let d = gridCells[r][c];
+        if (!d || !d.parentNode) {
+            d = document.createElement('div'); d.className = 'cell';
+            d.dataset.r = r; d.dataset.c = c;
+            gridCells[r][c] = d; grid.appendChild(d);
+        }
         let x = (c - r + S.rows - 1) * cell / Math.SQRT2, y = (c + r) * cell / Math.SQRT2;
         d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.transform = 'rotate(45deg)';
         let v = S.board[r][c], k = key(r, c);
-        if (v === 2) d.classList.add('ship');
-        if (v === 1) d.classList.add('empty');
-        if (S.derived.locks?.has(k) && v !== 2) d.classList.add('locked');
-        let heatPct = null;   // 高概率热力格直接显示百分比，与船格"●"区分
-        // 概率热力图（棋盘常态）：未知格按"相对船概率"渐变着色（蓝→橙金 = 低→高，避开船格的红色系）
-        if (v === 0 && !S.derived.locks?.has(k) && !S.derived.gameFinished &&
-            S.showHeatmap !== false) {
+        const cls = ['cell'];
+        if (v === 2) cls.push('ship');
+        if (v === 1) cls.push('empty');
+        if (S.derived.locks?.has(k) && v !== 2) cls.push('locked');
+        // 概率热力图（棋盘常态）：未知格按"相对船概率"渐变着色（蓝→橙金 = 低→高）
+        let bg = '', ttl = '', boxShadow = '', heatPct = null;
+        if (v === 0 && !S.derived.locks?.has(k) && !S.derived.gameFinished && S.showHeatmap !== false) {
             const p = S.derived.prob?.[r]?.[c] || 0;
             if (p > 0) {
                 const rel = S.derived.maxProb > 0 ? Math.min(1, p / S.derived.maxProb) : 0;
-                const hue = Math.round(215 - 170 * rel);   // 215蓝 → 45橙金
-                d.style.background = 'hsla(' + hue + ',85%,52%,' + (0.18 + 0.66 * rel).toFixed(2) + ')';
-                d.title = (p * 100).toFixed(1) + '%';   // 悬停显示精确船概率
+                const hue = Math.round(215 - 170 * rel);
+                bg = 'hsla(' + hue + ',85%,52%,' + (0.18 + 0.66 * rel).toFixed(2) + ')';
+                ttl = (p * 100).toFixed(1) + '%';
                 if (rel >= 0.7) heatPct = Math.round(p * 100) + '%';
             }
-            // 大探测会话中：已暂存（探过）的格子用实色覆盖热力图，一眼分清探没探过
+            // 大探测会话中：已暂存格子用实色覆盖热力图
             if (S.big) {
                 const cur = S.big.changes[k];
-                if (cur === 2) { d.style.background = 'rgba(47,158,85,.88)'; d.style.boxShadow = 'inset 0 0 0 3px #9dffc0'; }
-                else if (cur === 1) { d.style.background = 'rgba(0,0,0,.72)'; d.style.boxShadow = 'inset 0 0 0 3px rgba(255,255,255,.6)'; }
+                if (cur === 2) { bg = 'rgba(47,158,85,.88)'; boxShadow = 'inset 0 0 0 3px #9dffc0'; }
+                else if (cur === 1) { bg = 'rgba(0,0,0,.72)'; boxShadow = 'inset 0 0 0 3px rgba(255,255,255,.6)'; }
             }
         }
         // 游戏完成时不显示任何推荐高亮
         if (!S.derived.gameFinished && !S.derived.locks?.has(k)) {
-            if ((S.derived.scores?.[r]?.[c] || 0) > 0.45 && v === 0) d.classList.add('possible');
-            if (S.derived.best && S.derived.best.r === r && S.derived.best.c === c) d.classList.add('high');
-            if (S.derived.top3?.[1] && S.derived.top3[1].r === r && S.derived.top3[1].c === c) d.classList.add('top2');
-            if (S.derived.top3?.[2] && S.derived.top3[2].r === r && S.derived.top3[2].c === c) d.classList.add('top3');
-            if (S.derived.bigArea && S.derived.bigArea.r === r && S.derived.bigArea.c === c) d.classList.add('big-area');
+            if ((S.derived.scores?.[r]?.[c] || 0) > 0.45 && v === 0) cls.push('possible');
+            if (S.derived.best && S.derived.best.r === r && S.derived.best.c === c) cls.push('high');
+            if (S.derived.top3?.[1] && S.derived.top3[1].r === r && S.derived.top3[1].c === c) cls.push('top2');
+            if (S.derived.top3?.[2] && S.derived.top3[2].r === r && S.derived.top3[2].c === c) cls.push('top3');
+            if (S.derived.bigArea && S.derived.bigArea.r === r && S.derived.bigArea.c === c) cls.push('big-area');
         }
-        if (S.derived.forced?.has(k)) d.classList.add('forced');
-        if (S.derived.highConf?.has(k)) d.classList.add('possible');
-        if (S.selected === k) d.classList.add('selected');
-        d.dataset.r = r; d.dataset.c = c;
-        // 锁定格（source='lock'）是逻辑推导的空，不显示"×"探测标记，保留条纹视觉
+        if (S.derived.forced?.has(k)) cls.push('forced');
+        if (S.derived.highConf?.has(k)) cls.push('possible');
+        if (S.selected === k) cls.push('selected');
+        // 锁定格（source='lock'）是逻辑推导的空，不显示"×"标记
         let markText = v === 2 ? '●' : (v === 1 && S.source[r][c] !== 'lock') ? '×' : '';
         if (!markText && heatPct) markText = heatPct;
-        // 手机排版：推荐 1/2/3 标号直接画在格子上，不看面板也知道往哪探
+        // 手机排版：推荐 1/2/3 标号直接画在格子上
         if (S.mode === 'mobile' && v === 0 && !S.derived.gameFinished) {
             let recIdx = 0;
             if (S.derived.best && S.derived.best.r === r && S.derived.best.c === c) recIdx = 1;
             else if (S.derived.top3?.[1] && S.derived.top3[1].r === r && S.derived.top3[1].c === c) recIdx = 2;
             else if (S.derived.top3?.[2] && S.derived.top3[2].r === r && S.derived.top3[2].c === c) recIdx = 3;
-            if (recIdx) { d.classList.add('rec' + recIdx); markText = String(recIdx); }
+            if (recIdx) { cls.push('rec' + recIdx); markText = String(recIdx); }
         }
-        d.innerHTML = '<span class="coord">' + (r + 1) + ',' + (c + 1) + '</span><span class="mark">' + markText + '</span>';
-        grid.appendChild(d);
+        const clsStr = cls.join(' ');
+        if (d.className !== clsStr) d.className = clsStr;
+        if (d.style.background !== bg) d.style.background = bg;
+        if (d.style.boxShadow !== boxShadow) d.style.boxShadow = boxShadow;
+        if (d.title !== ttl) d.title = ttl;
+        // 内容：坐标号（可开关）+ 标记
+        let coordEl = d.querySelector('.coord'), markEl = d.querySelector('.mark');
+        if (!coordEl || !markEl) { d.innerHTML = '<span class="coord"></span><span class="mark"></span>'; coordEl = d.querySelector('.coord'); markEl = d.querySelector('.mark'); }
+        const coordText = S.showCoords ? (r + 1) + ',' + (c + 1) : '';
+        if (coordEl.textContent !== coordText) coordEl.textContent = coordText;
+        if (markEl.textContent !== markText) markEl.textContent = markText;
     }
+    // 行列数变小时移除多余格子
+    while (grid.childElementCount > S.rows * S.cols) grid.removeChild(grid.lastChild);
+    placeCornerButtons();
+    const ms = Math.round(performance.now() - t0);
+    if (ms >= 30) logRea('渲染棋盘' + ms + 'ms');   // 只记慢渲染，避免刷屏
+}
+
+// 大屏四角快捷按钮：贴在菱形棋盘四个角的空白三角区
+function placeCornerButtons() {
+    const vp = $('gridViewport'), grid = $('grid');
+    const b1 = $('cornerUndo'), b2 = $('cornerMark'), b3 = $('cornerConfirm'), b4 = $('cornerBig');
+    if (!vp || !grid || !b1) return;
+    // 手机：按钮固定在棋盘面板四角（空间充足、与棋盘大小无关，任何手机尺寸都显示）
+    if (S.device === 'phone') {
+        const bw = 34, bh = 34, pad = 6;
+        [b1, b2, b3, b4].forEach(b => { if (b) b.style.display = ''; });
+        b1.style.left = pad + 'px'; b1.style.top = pad + 'px';
+        b2.style.left = (vp.clientWidth - bw - pad) + 'px'; b2.style.top = pad + 'px';
+        b3.style.left = pad + 'px'; b3.style.top = (vp.clientHeight - bh - pad) + 'px';
+        b4.style.left = (vp.clientWidth - bw - pad) + 'px'; b4.style.top = (vp.clientHeight - bh - pad) + 'px';
+        return;
+    }
+    const gx = grid.offsetLeft, gy = grid.offsetTop, gw = grid.offsetWidth, gh = grid.offsetHeight;
+    // 按钮实际尺寸由视口宽度决定（<600 用 34px 小号，否则 44px）；不依赖实时测量，避免隐藏后测量为 0 的循环问题
+    const small = window.innerWidth < 600;
+    const bw = small ? 34 : 44, bh = small ? 34 : 40, pad = 8;
+    // 小棋盘（如 3×3/5×5）四角空间不足时隐藏按钮，避免遮挡格子
+    const triH = gw * (1 - 1 / Math.SQRT2) / 2;
+    const hide = triH < bh + pad * 2;
+    [b1, b2, b3, b4].forEach(b => { if (b) b.style.display = hide ? 'none' : ''; });
+    b1.style.left = (gx + pad) + 'px'; b1.style.top = (gy + pad) + 'px';
+    b2.style.left = (gx + gw - bw - pad) + 'px'; b2.style.top = (gy + pad) + 'px';
+    b3.style.left = (gx + pad) + 'px'; b3.style.top = (gy + gh - bh - pad) + 'px';
+    b4.style.left = (gx + gw - bw - pad) + 'px'; b4.style.top = (gy + gh - bh - pad) + 'px';
 }
 
 let autosaveTimer = null;
+// ===== B 档：自动保存多槽（保留最近 20 个，重启后仍可恢复历史进度）=====
+const ASLOTS_KEY = 'shipsolver_autoslots_v1';
+function saveAutoslot(s) {
+    try {
+        let slots = JSON.parse(localStorage.getItem(ASLOTS_KEY) || '[]');
+        slots.push({ t: Date.now(), state: s });
+        if (slots.length > 20) slots = slots.slice(-20);
+        localStorage.setItem(ASLOTS_KEY, JSON.stringify(slots));
+    } catch(e) {}
+}
+function loadAutoslot(i) {
+    try {
+        const slots = JSON.parse(localStorage.getItem(ASLOTS_KEY) || '[]');
+        const s = slots[i];
+        if (s && s.state) {
+            restore(s.state); S.currentSaveName = null;
+            closeModal('saveModal');
+            toast('已恢复自动快照：' + new Date(s.t).toLocaleString());
+        }
+    } catch(e) {}
+}
 function scheduleAutosave() {
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(() => {
         autosaveTimer = null;
-        try { localStorage.setItem(AUTO_KEY, JSON.stringify(snap())); } catch(e) { console.error('ShipSolver: 自动保存失败', e); }
+        const t0 = performance.now();
+        const s = snap();
+        try { localStorage.setItem(AUTO_KEY, JSON.stringify(s)); } catch(e) { console.error('ShipSolver: 自动保存失败', e); }
+        saveAutoslot(s);
+        const ms = Math.round(performance.now() - t0);
+        if (ms >= 20) logRea('自动保存' + ms + 'ms');   // 只记慢写入
         S.lastAutosave = new Date().toLocaleTimeString('zh-CN', {hour12: false});
     }, 800);
 }
@@ -955,6 +1142,12 @@ function renderPanels() {
     if (sm) sm.disabled = !!S.big || S.derived.gameFinished;
     if (cm) cm.disabled = !S.big || S.derived.gameFinished;
     if (um) um.disabled = !S.big;
+    const cb = $('cornerBig');
+    if (cb) {
+        const small = window.innerWidth < 600;
+        cb.textContent = S.big ? (small ? '✓' : '✓确认') : (small ? '探' : '大探测');
+        cb.disabled = !!S.derived.gameFinished;
+    }
     } catch(e) { console.error('ShipSolver: 探测面板渲染失败', e); }
     scheduleAutosave();
     try {
@@ -1036,7 +1229,7 @@ function setupGridEvents() {
                 S.confirmed.push(b.sig);
                 compute(); render();
                 toast('已确认长度' + b.len + '的船');
-                logAct('confirm_right', '右键确认：长度' + b.len);
+                logAct('右键确认船', '右键确认：长度' + b.len);
                 return;
             }
         }
@@ -1149,7 +1342,7 @@ function mark(r, c, val) {
     let actDetail = (r+1)+','+(c+1)+'='+(S.board[r][c]===2?'船':S.board[r][c]===1?'空':'取消');
     if (prevRec) actDetail += ' | 推('+(prevRec.r+1)+','+(prevRec.c+1)+')'+(followed?'✓':'✗');
     // 结构化"预测→实际"：推荐格、是否被探、实际是否船
-    logAct(val===2?'mark_ship':val===1?'mark_empty':'cancel', actDetail,
+    logAct(val===2?'标记船':val===1?'标记空':'取消标记', actDetail,
         prevRec ? {r: prevRec.r, c: prevRec.c, followed, hit: !!(followed && S.board[r][c] === 2)} : null);
 }
 
@@ -1160,6 +1353,12 @@ function mark(r, c, val) {
 function isTouchPrimary() {
     return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
 }
+// 设备类型：看屏幕物理尺寸（分屏小窗时 innerWidth 会变小，但 screen 不变）
+function detectDevice() {
+    if (!isTouchPrimary()) return 'desktop';
+    const sw = (screen && screen.width) || window.innerWidth;
+    return sw >= 600 ? 'tablet' : 'phone';
+}
 function detectMode() {
     const f = S.forcedMode;
     if (f === 'desktop') return 'desktop';
@@ -1169,19 +1368,37 @@ function detectMode() {
 }
 function applyMode() {
     const m = detectMode();
+    const dev = detectDevice();
     S.mode = m;
+    S.device = dev;
     document.documentElement.dataset.mode = m;
+    document.documentElement.dataset.device = dev;
+    document.documentElement.dataset.corner = S.cornerBtns ? 'on' : 'off';
     const btn = $('markModeBtn');
     if (btn) btn.style.display = m === 'mobile' ? '' : 'none';
     updateMarkModeUI();
     const sel = $('modeSelect'); if (sel) sel.value = S.forcedMode;
+    const ck = $('cornerBtnsChk'); if (ck) ck.checked = !!S.cornerBtns;
+    const cc = $('showCoordsChk'); if (cc) cc.checked = !!S.showCoords;
     renderGrid();
+}
+function setShowCoords(v) {
+    S.showCoords = !!v;
+    try { localStorage.setItem('shipsolver_show_coords', S.showCoords ? '1' : '0'); } catch(e) {}
+    renderGrid();
+}
+function setCornerBtns(v) {
+    S.cornerBtns = !!v;
+    try { localStorage.setItem('shipsolver_corner_btns', S.cornerBtns ? '1' : '0'); } catch(e) {}
+    applyMode();
 }
 function updateMarkModeUI() {
     const t = S.markMode === 'ship' ? '●标船' : '×标空';
     const b1 = $('markModeBtn'), b2 = $('markModeBtnM');
     if (b1) { b1.textContent = t; b1.classList.toggle('warn', S.markMode === 'empty'); }
     if (b2) { b2.textContent = t; b2.classList.toggle('warn', S.markMode === 'empty'); }
+    const b3 = $('cornerMark');
+    if (b3) { b3.textContent = S.markMode === 'ship' ? '船' : '空'; b3.classList.toggle('warn', S.markMode === 'empty'); }
 }
 function setForcedMode(v) {
     S.forcedMode = (v === 'auto' || v === 'desktop' || v === 'mobile') ? v : 'auto';
@@ -1201,6 +1418,9 @@ function togglePanel(bodyId) {
     if (S.mode !== 'mobile') return;
     const b = $(bodyId);
     if (b) b.classList.toggle('open');
+}
+function cornerBigAction() {
+    if (S.big) confirmBig(); else startBig();
 }
 function setConfig(l, v) { push(); S.config[l] = Math.max(0, +v || 0); compute(); render(); }
 function addLength() { let l = prompt('请输入船长（2~10）', '2'); if (l && +l >= 2 && +l <= 10) { S.config[+l] = S.config[+l] || 1; compute(); render(); } }
@@ -1224,10 +1444,10 @@ function confirmSelectedShip() {
     S.confirmed.push(target.sig); S.selected = null;
     compute(); render();
     toast('已确认长度' + target.len + '的船');
-    logAct('confirm_btn', '确认：长度' + target.len);
+    logAct('按钮确认船', '确认：长度' + target.len);
 }
-function undo() { if (!S.undo.length) return; S.redo.push(snap()); restore(S.undo.pop()); }
-function resetGame() { if (!confirm('确认重置当前棋盘？')) return; S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; S.consecutiveMisses = 0; S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
+function undo() { if (!S.undo.length) return; S.redo.push(snap()); restore(S.undo.pop()); saveUndoStack(); }
+function resetGame() { if (!confirm('确认重置当前棋盘？')) return; S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.consecutiveMisses = 0; S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
 function startBig() { S.big = {changes: {}}; if (S.mode === 'mobile') { const b = $('opBody'); if (b) b.classList.add('open'); } render(); }
 function confirmBig() { if (!S.big) return; push(); let lastShip = null, prevRec = S.derived.best ? {r: S.derived.best.r, c: S.derived.best.c} : null; let hit = 0, applied = 0, ships = 0, empties = 0; let cells = [], hist = []; let recFollowed = false, recKey = prevRec ? key(prevRec.r, prevRec.c) : null; if (recKey && S.big.changes[recKey] !== undefined) { S.stats.recFollowed++; recFollowed = true; } Object.entries(S.big.changes).forEach(([k, v]) => { let [r, c] = k.split(',').map(Number); S.board[r][c] = v; S.source[r][c] = 'big'; applied++; cells.push((r+1)+','+(c+1)+(v===2?'船':'空')); hist.push([r, c, v]); if (v === 2) { S.tools.sonarCoins += 10; ships++; lastShip = [r, c]; if (k === recKey) { S.stats.recHit++; hit++; } } else { empties++; } }); if (lastShip) S.lastMark = lastShip; if (hist.length) S.bigHistory.push(hist); S.consecutiveMisses = 0; S.events.push({time: new Date().toLocaleTimeString('zh-CN', {hour12: false}), text: '大探测确认 ' + applied + ' 格'}); if (S.events.length > 100) S.events.shift(); logAct('big_confirm', applied + '格(船' + ships + '空' + empties + ') ' + cells.join(' ') + (recFollowed ? ' 采纳推荐' + (hit ? '✓命中船' : '✗落空') : ' 未采纳推荐'), prevRec ? {r: prevRec.r, c: prevRec.c, followed: recFollowed, hit: !!hit} : null); S.big = null; compute(); render(); }
 function cancelBig() { S.big = null; render(); }
@@ -1261,14 +1481,14 @@ function clearAllSaves() { if (confirm('确认删除全部存档（所有期）�
 function showHelp() { $('helpModal').classList.add('show'); }
 function closeModal(id) { $(id).classList.remove('show'); }
 function openBoardSettings() { $('modalRows').value = S.rows; $('modalCols').value = S.cols; $('modalConfig').innerHTML = Object.keys(S.config).sort((a, b) => b - a).map(l => '<label class="config-item">' + l + '格×<input data-len="' + l + '" type="number" min="0" max="9" value="' + S.config[l] + '"></label>').join(''); $('boardModal').classList.add('show'); }
-function applyBoardSettings() { S.rows = Math.max(3, Math.min(10, +$('modalRows').value || 10)); S.cols = Math.max(3, Math.min(10, +$('modalCols').value || 10)); let cfg = {}; $('modalConfig').querySelectorAll('input').forEach(i => cfg[i.dataset.len] = Math.max(0, +i.value || 0)); S.config = cfg; closeModal('boardModal'); S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
+function applyBoardSettings() { S.rows = Math.max(3, Math.min(10, +$('modalRows').value || 10)); S.cols = Math.max(3, Math.min(10, +$('modalCols').value || 10)); let cfg = {}; $('modalConfig').querySelectorAll('input').forEach(i => cfg[i.dataset.len] = Math.max(0, +i.value || 0)); S.config = cfg; closeModal('boardModal'); S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
 let lastFeedbackText = '';
 function exportFeedback() {
     const fb = {
         version: VERSION,
         exportedAt: new Date().toISOString(),   // 导出时间（ISO，便于排序/回查）
         state: snap(),
-        actions: S.logs.actions,
+        actions: S.logs.actions.map(a => ({...a, type: LOG_TYPES[a.type] || a.type})),   // 旧日志英文标识也转中文
         reasoning: S.logs.reasoning,
         stats: S.stats,
         summary: {   // 一屏速览摘要
@@ -1281,7 +1501,7 @@ function exportFeedback() {
             finished: !!(S.derived?.gameFinished)
         },
         userAgent: navigator.userAgent,
-        viewport: {w: innerWidth, h: innerHeight}
+        viewport: {w: innerWidth, h: innerHeight, screenW: screen.width, screenH: screen.height}   // 含设备屏幕尺寸，便于区分手机/平板
     };
     lastFeedbackText = JSON.stringify(fb, null, 2);
     if (S.mode === 'mobile') {
@@ -1290,7 +1510,7 @@ function exportFeedback() {
         $('feedbackModal').classList.add('show');
         return;
     }
-    download('ShipSolver_feedback_' + new Date().toISOString().slice(0, 10) + '.json', lastFeedbackText);
+    download('ShipSolver_反馈_v' + VERSION + '_' + fileStamp() + '.json', lastFeedbackText);
 }
 function copyFeedback() {
     const ta = $('feedbackText');
@@ -1307,7 +1527,7 @@ function copyFeedback() {
     toast(ok ? '已复制全文，请粘贴发送给开发者' : '复制失败，请手动长按选择复制');
 }
 function downloadFeedback() {
-    if (lastFeedbackText) download('ShipSolver_feedback_' + new Date().toISOString().slice(0, 10) + '.json', lastFeedbackText);
+    if (lastFeedbackText) download('ShipSolver_反馈_v' + VERSION + '_' + fileStamp() + '.json', lastFeedbackText);
 }
 
 // ==================================================================
@@ -1359,7 +1579,7 @@ function autoArchive() {
         const base = '自动-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
         let n = base, i = 1;
         while (store._periods[S.currentPeriod][n]) n = base + '#' + (++i);
-        logAct('game_finished', '本局完成，自动存档：' + n);
+        logAct('本局完成', '本局完成，自动存档：' + n);
         store._periods[S.currentPeriod][n] = {time: Date.now(), state: snap(), period: S.currentPeriod};
         store._currentPeriod = S.currentPeriod;
         saveStore(store);
@@ -1367,7 +1587,19 @@ function autoArchive() {
 }
 function periodSaves() { let s = getSaves(); let p = s._periods[S.currentPeriod]; return p || {}; }
 function allSavesFlat() { let s = getSaves(), out = {}; for (let p in s._periods) Object.assign(out, s._periods[p]); return out; }
-function openSaves() { let store = getSaves(); $('savePeriodSelect').innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join(''); $('saveModal').classList.add('show'); renderSaves(); }
+function openSaves() { let store = getSaves(); $('savePeriodSelect').innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join(''); $('saveModal').classList.add('show'); renderSaves(); renderAutoslots(); }
+function renderAutoslots() {
+    const el = $('autoslotList'); if (!el) return;
+    try {
+        const slots = JSON.parse(localStorage.getItem(ASLOTS_KEY) || '[]');
+        if (!slots.length) { el.innerHTML = ''; return; }
+        const recent = slots.slice(-5);
+        el.innerHTML = '<div class="hint" style="margin:8px 0 4px">🕐 自动快照（最近 ' + recent.length + ' 个，重启后仍可恢复）：</div>' + recent.map((s, i) => {
+            const realIdx = slots.length - recent.length + i;
+            return '<div class="save-row"><div class="save-main"><b>' + new Date(s.t).toLocaleString() + '</b><div class="hint">自动保存</div></div><button class="secondary" onclick="App.loadAutoslot(' + realIdx + ')">恢复</button></div>';
+        }).join('');
+    } catch(e) {}
+}
 function renderSaves() {
     let store = getSaves();
     let periods = Object.keys(store._periods || {});
@@ -1382,15 +1614,15 @@ function renderSaves() {
         let names = Object.keys(saves).sort((a,b) => (saves[b].time||0)-(saves[a].time||0));
         if (!names.length) continue;
         let isCur = p === S.currentPeriod;
-        html += '<div class="save-group" style="margin-top:10px"><div class="hint" style="margin-bottom:4px">' + (isCur ? '📌' : '🕘') + ' 期「' + p + '」' + (isCur ? ' <b style="color:#78ff9a">【当前】</b>' : '') + '（' + names.length + ' 个）</div>';
+        html += '<div class="save-group" style="margin-top:10px"><div class="save-group-title' + (isCur ? ' cur' : '') + '">' + (isCur ? '📌' : '🕘') + ' 期「' + p + '」' + (isCur ? ' <span class="cur-tag">当前</span>' : '') + ' · ' + names.length + ' 个</div>';
         for (let n of names) {
             let s = saves[n];
             let st = s.state || {};
             let cfgTxt = Object.keys(st.config || {}).sort((a, b) => b - a).map(l => l + '×' + st.config[l]).join(' ');
             let done = st.finished !== undefined ? st.finished : !st.board || !st.board.flat().includes(0);
-            let status = done ? '<span style="color:#78ff9a">✓完成</span>' : '<span style="color:#ffd95a">进行中</span>';
+            let status = done ? '<span class="st-done">✓完成</span>' : '<span class="st-ongoing">进行中</span>';
             let shipN = (st.confirmed || []).length;
-        html += '<div class="save-row"><div class="save-main"><b>' + n + (isCur ? ' <span style="color:#78ff9a">【当前】</span>' : '') + (isCur && n === S.currentSaveName ? ' <span style="color:#78ff9a">【当前盘】</span>' : '') + '</b><div class="hint">' + new Date(s.time).toLocaleString() + ' · ' + (st.rows||'?') + '×' + (st.cols||'?') + ' · ' + cfgTxt + ' · 确认船' + shipN + ' · ' + status + '</div></div><button onclick="App.loadSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">读取</button><button class="danger" onclick="App.deleteSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">删除</button></div>';
+        html += '<div class="save-row"><div class="save-main"><b>' + n + '</b>' + (isCur && n === S.currentSaveName ? ' <span class="cur-disc">当前盘</span>' : '') + '<div class="hint">' + new Date(s.time).toLocaleString() + ' · ' + (st.rows||'?') + '×' + (st.cols||'?') + ' · ' + cfgTxt + ' · 确认船' + shipN + ' · ' + status + '</div></div><button onclick="App.loadSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">读取</button><button class="danger" onclick="App.deleteSave(\'' + encodeURIComponent(n) + '\',\'' + encodeURIComponent(p) + '\')">删除</button></div>';
         }
         html += '</div>';
     }
@@ -1398,8 +1630,15 @@ function renderSaves() {
 }
 function saveCurrent() { let n = $('saveName').value.trim() || '存档_' + new Date().toLocaleString().replace(/[/: ]/g, '-'); let store = getSaves(); if (!store._periods[S.currentPeriod]) store._periods[S.currentPeriod] = {}; store._periods[S.currentPeriod][n] = {time: Date.now(), state: snap(), period: S.currentPeriod}; store._currentPeriod = S.currentPeriod; S.currentSaveName = n; saveStore(store); renderSaves(); toast('已保存到「' + S.currentPeriod + '」'); }
 function loadSave(n, p) { let store = getSaves(); p = p ? decodeURIComponent(p) : S.currentPeriod; let s = (store._periods[p]||{})[decodeURIComponent(n)]; if (s) { restore(s.state); S.currentSaveName = decodeURIComponent(n); S.currentPeriod = p; store._currentPeriod = p; saveStore(store); closeModal('saveModal'); toast('已读取：' + S.currentSaveName); } }
-function deleteSave(n, p) { let store = getSaves(); p = p ? decodeURIComponent(p) : S.currentPeriod; delete store._periods[p][decodeURIComponent(n)]; if (S.currentSaveName === decodeURIComponent(n) && S.currentPeriod === p) S.currentSaveName = null; saveStore(store); renderSaves(); }
-function exportAll() { const d = new Date(), pad = n => String(n).padStart(2, '0'); download('ShipSolver_saves_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json', JSON.stringify(getSaves(), null, 2)); }
+function deleteSave(n, p) {
+    const name = decodeURIComponent(n), per = p ? decodeURIComponent(p) : S.currentPeriod;
+    if (!confirm('确认删除存档「' + name + '」？删除后不可恢复。')) return;
+    let store = getSaves();
+    delete store._periods[per][name];
+    if (S.currentSaveName === name && S.currentPeriod === per) S.currentSaveName = null;
+    saveStore(store); renderSaves();
+}
+function exportAll() { download('ShipSolver_存档备份_v' + VERSION + '_' + fileStamp() + '.json', JSON.stringify(getSaves(), null, 2)); }
 function refreshPeriodDropdown() { let store = getSaves(); let sel = $('savePeriodSelect'); if (sel) sel.innerHTML = Object.keys(store._periods || {}).map(p => '<option value="' + p + '"' + (p === S.currentPeriod ? ' selected' : '') + '>' + p + '</option>').join(''); }
 function importJSON(e) {
     let f = e.target.files && e.target.files[0]; if (!f) return;
@@ -1456,6 +1695,12 @@ function boot() {
     } catch(e) {}
     // 恢复排版模式设置
     try { S.forcedMode = localStorage.getItem('shipsolver_forced_mode') || 'auto'; } catch(e) {}
+    // 恢复四角快捷按钮开关
+    try { S.cornerBtns = localStorage.getItem('shipsolver_corner_btns') !== '0'; } catch(e) {}
+    // 恢复坐标号开关
+    try { S.showCoords = localStorage.getItem('shipsolver_show_coords') !== '0'; } catch(e) {}
+    newLogSession();   // 开启新会话日志段
+    loadUndoStack();   // 恢复持久化的撤销栈（重启后仍可回退）
 
     let a = localStorage.getItem(AUTO_KEY);
     let restored = false;
@@ -1467,8 +1712,14 @@ function boot() {
                 Array.isArray(data.board) && data.board.length === data.rows &&
                 data.board.every(row => Array.isArray(row) && row.length === data.cols)) {
                 restore(data); restored = true;
-            } else { localStorage.removeItem(AUTO_KEY); initFresh(); }
-        } catch(e) { localStorage.removeItem(AUTO_KEY); initFresh(); }
+            } else {
+                try { localStorage.setItem('shipsolver_corrupt_backup', JSON.stringify(data)); } catch(_) {}
+                localStorage.removeItem(AUTO_KEY); initFresh();
+            }
+        } catch(e) {
+            try { localStorage.setItem('shipsolver_corrupt_backup', a); } catch(_) {}
+            localStorage.removeItem(AUTO_KEY); initFresh();
+        }
     } else { initFresh(); }
     applyMode();
     setTimeout(() => { if (restored) toast('已恢复上次自动保存的进度'); }, 400);
@@ -1483,7 +1734,15 @@ function boot() {
     // 页面加载后延迟再画一次棋盘（确保布局已稳定）
     setTimeout(renderGrid, 200);
     setTimeout(renderGrid, 600);
-    let resizeTimer; window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(applyMode, 150); });
+    // 仅宽度变化才重画棋盘；手机/平板仅高度变化（地址栏收放）不重画，避免滑动卡顿
+    let resizeTimer, lastResizeW = window.innerWidth;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        const w = window.innerWidth;
+        if (w === lastResizeW && S.mode === 'mobile') return;
+        lastResizeW = w;
+        resizeTimer = setTimeout(applyMode, 150);
+    });
     document.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
         // 紧急重置：Ctrl+Shift+R 清除所有数据并刷新
@@ -1494,6 +1753,22 @@ function boot() {
             location.reload();
         }
     });
+    // 捕获页面运行时错误并记入日志，反馈时可直接定位
+    window.addEventListener('error', e => {
+        try { logAct('页面错误', '页面错误：' + (e.message || '') + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '')); } catch(_) {}
+    });
+    // 长任务监控：主线程卡顿超 50ms 的事件自动记入推理日志（定位卡顿）
+    try {
+        if (typeof PerformanceObserver !== 'undefined') {
+            new PerformanceObserver(list => {
+                for (const e of list.getEntries()) {
+                    if (e.duration >= 50) logRea('长任务' + Math.round(e.duration) + 'ms');
+                }
+            }).observe({ entryTypes: ['longtask'] });
+        }
+    } catch(e) {}
+    // 关闭/切后台页面时立即落盘日志与撤销栈，减少丢失
+    window.addEventListener('pagehide', () => { flushLogsNow(); flushUndoNow(); });
 }
 function initFresh() {
     S.startedAt = Date.now();
@@ -1510,7 +1785,7 @@ function initFresh() {
     }
 }
 
-return {boot, undo, resetGame, setConfig, addLength, confirmSelectedShip, startBig, confirmBig, cancelBig, clearEvents, openSaves, saveCurrent, loadSave, deleteSave, exportAll, importJSON, editResources, openSettings, setHistory, setHeatmap, setHistoryWeight, clearAllSaves, openBoardSettings, applyBoardSettings, closeModal, showHelp, switchPeriod, newPeriod, deletePeriod, mergePeriod, exportFeedback, copyFeedback, downloadFeedback, toggleMarkMode, toggleLegend, togglePanel, setForcedMode};
+return {boot, undo, resetGame, setConfig, addLength, confirmSelectedShip, startBig, confirmBig, cancelBig, clearEvents, openSaves, saveCurrent, loadSave, deleteSave, exportAll, importJSON, editResources, openSettings, setHistory, setHeatmap, setHistoryWeight, clearAllSaves, openBoardSettings, applyBoardSettings, closeModal, showHelp, switchPeriod, newPeriod, deletePeriod, mergePeriod, exportFeedback, copyFeedback, downloadFeedback, toggleMarkMode, toggleLegend, togglePanel, setForcedMode, setCornerBtns, setShowCoords, cornerBigAction, loadAutoslot};
 })();
 window.addEventListener('DOMContentLoaded', App.boot);
 </script>
