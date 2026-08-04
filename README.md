@@ -1,6 +1,6 @@
 # ShipSolver
 
-战舰游戏（Ships / Battleship）与海岛奇兵（Boom Beach）推理辅助工具：单文件、离线、双击即用。
+海岛奇兵（Boom Beach）声呐推理辅助工具：单文件、离线、双击即用。
 
 ## 使用
 
