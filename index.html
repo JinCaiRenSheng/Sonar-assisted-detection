@@ -1527,7 +1527,7 @@ function downloadFeedback() {
     if (lastFeedbackText) download('ShipSolver_反馈_v' + VERSION + '_' + fileStamp() + '.json', lastFeedbackText);
 }
 // 到 GitHub Issues 提交反馈：复制日志 + 打开预填好的新建问题页（无需服务器）
-const ISSUES_URL = 'https://github.com/JinCaiRenSheng/my-first-project-GitHub/issues/new';
+const ISSUES_URL = 'https://github.com/JinCaiRenSheng/Sonar-assisted-detection/issues/new';
 function feedbackToGitHub() {
     if (!lastFeedbackText) { toast('请先生成反馈内容（点「反馈」）'); return; }
     // 复制完整日志到剪贴板（不调 copyFeedback，避免其提示覆盖本提示）
