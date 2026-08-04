@@ -4,3 +4,5 @@
 ShipSolver_v2.2.5_Desktop/
 ShipSolver_v2.3.6_Test/
 归档/
+# 个人软件配置不入库
+.obsidian/
