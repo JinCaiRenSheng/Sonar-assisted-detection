@@ -6,3 +6,6 @@ ShipSolver_v2.3.6_Test/
 归档/
 # 个人软件配置不入库
 .obsidian/
+# 本地发布包与图片底稿不入库（发布包作 Release 附件用）
+*.zip
+IMG_*.jpg
