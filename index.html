@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17365f">
-<title>ShipSolver v2.4.6 桌面/手机双模式版</title>
+<title>ShipSolver v2.4.7 桌面/手机双模式版</title>
 <style>
 /* ================================================================
    CSS 变量 —— 统一管理所有颜色和尺寸
@@ -198,7 +198,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 </head>
 <body>
 <div class="container">
-<h1>🚢 ShipSolver v2.4.6 桌面/手机双模式版</h1>
+<h1>🚢 ShipSolver v2.4.7 桌面/手机双模式版</h1>
 <div class="subtitle">多策略评分 · 信息增益 · 自动确认</div>
 
 <div class="panel controls" id="topControls">
@@ -332,6 +332,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 <textarea id="feedbackText" readonly spellcheck="false" style="width:100%;min-height:180px;font-family:Consolas,monospace;font-size:11px;line-height:1.5"></textarea>
 <div class="btn-row" style="margin-top:8px">
   <button onclick="App.copyFeedback()">📋复制全文</button>
+  <button onclick="App.feedbackToGitHub()">🐙到 GitHub 提交问题</button>
   <button class="secondary" onclick="App.downloadFeedback()">⬇下载文件</button>
   <button class="secondary" onclick="App.closeModal('feedbackModal')">关闭</button>
 </div>
@@ -376,7 +377,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 const App = (function() {
 'use strict';
 
-const VERSION = '2.4.6';
+const VERSION = '2.4.7';
 const SAVE_FORMAT = 2;
 const SAVE_KEY = 'shipsolver_saves';
 const AUTO_KEY = 'shipsolver_autosave_v2_0_0';
@@ -1529,6 +1530,38 @@ function copyFeedback() {
 function downloadFeedback() {
     if (lastFeedbackText) download('ShipSolver_反馈_v' + VERSION + '_' + fileStamp() + '.json', lastFeedbackText);
 }
+// 到 GitHub Issues 提交反馈：复制日志 + 打开预填好的新建问题页（无需服务器）
+const ISSUES_URL = 'https://github.com/JinCaiRenSheng/my-first-project-GitHub/issues/new';
+function feedbackToGitHub() {
+    if (!lastFeedbackText) { toast('请先生成反馈内容（点「反馈」）'); return; }
+    // 复制完整日志到剪贴板（不调 copyFeedback，避免其提示覆盖本提示）
+    const ta = $('feedbackText');
+    let ok = false;
+    if (ta) { ta.select(); ta.setSelectionRange(0, ta.value.length); try { ok = document.execCommand('copy'); } catch(e) {} }
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(lastFeedbackText).catch(() => {}); }
+    let fb = null; try { fb = JSON.parse(lastFeedbackText); } catch(e) {}
+    const body = [
+        '## 问题描述',
+        '',
+        '（请描述：做了什么操作、出现什么现象，如卡顿 / 报错 / 界面问题）',
+        '',
+        '## 环境',
+        '- 版本：' + (fb && fb.version ? fb.version : ''),
+        '- 浏览器：' + (fb && fb.userAgent ? fb.userAgent.slice(0, 90) : ''),
+        '- 屏幕：' + (fb && fb.viewport ? fb.viewport.w + 'x' + fb.viewport.h + '（设备 ' + (fb.viewport.screenW || '?') + 'x' + (fb.viewport.screenH || '?') + '）' : ''),
+        '- 操作次数：' + (fb && fb.summary ? fb.summary.actionCount : ''),
+        '',
+        '## 日志',
+        '',
+        '完整日志已复制到剪贴板，请粘贴到下方；或把「反馈文件」直接拖进本输入框。',
+        ''
+    ].join('\n');
+    const url = ISSUES_URL
+        + '?title=' + encodeURIComponent('反馈：' + (fb && fb.version ? fb.version : '') + ' ' + new Date().toLocaleString('zh-CN', {hour12: false}))
+        + '&body=' + encodeURIComponent(body);
+    window.open(url, '_blank');
+    toast('已复制日志并打开 GitHub 提交页：粘贴（或拖入文件）后点提交');
+}
 
 // ==================================================================
 // 存档（支持分期槽 + 旧版兼容迁移）
@@ -1785,7 +1818,7 @@ function initFresh() {
     }
 }
 
-return {boot, undo, resetGame, setConfig, addLength, confirmSelectedShip, startBig, confirmBig, cancelBig, clearEvents, openSaves, saveCurrent, loadSave, deleteSave, exportAll, importJSON, editResources, openSettings, setHistory, setHeatmap, setHistoryWeight, clearAllSaves, openBoardSettings, applyBoardSettings, closeModal, showHelp, switchPeriod, newPeriod, deletePeriod, mergePeriod, exportFeedback, copyFeedback, downloadFeedback, toggleMarkMode, toggleLegend, togglePanel, setForcedMode, setCornerBtns, setShowCoords, cornerBigAction, loadAutoslot};
+return {boot, undo, resetGame, setConfig, addLength, confirmSelectedShip, startBig, confirmBig, cancelBig, clearEvents, openSaves, saveCurrent, loadSave, deleteSave, exportAll, importJSON, editResources, openSettings, setHistory, setHeatmap, setHistoryWeight, clearAllSaves, openBoardSettings, applyBoardSettings, closeModal, showHelp, switchPeriod, newPeriod, deletePeriod, mergePeriod, exportFeedback, copyFeedback, downloadFeedback, feedbackToGitHub, toggleMarkMode, toggleLegend, togglePanel, setForcedMode, setCornerBtns, setShowCoords, cornerBigAction, loadAutoslot};
 })();
 window.addEventListener('DOMContentLoaded', App.boot);
 </script>
