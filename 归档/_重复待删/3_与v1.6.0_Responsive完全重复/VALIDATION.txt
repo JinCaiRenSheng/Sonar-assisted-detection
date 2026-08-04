@@ -1,3 +1,0 @@
-node --check: PASS
-HTML structure: PASS
-passed

@@ -1,2 +1,6 @@
 # 临时/测试产物不入库
 清理/
+# 开发资料不入库（GitHub 仓库只发布工具本体）
+ShipSolver_v2.2.5_Desktop/
+ShipSolver_v2.3.6_Test/
+归档/
