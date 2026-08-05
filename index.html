@@ -988,8 +988,8 @@ function renderGrid() {
         if (S.derived.locks?.has(k) && v !== 2) cls.push('locked');
 // 概率热力图（棋盘常态）：未知格按"相对船概率"渐变着色（蓝→橙金 = 低→高）
 let bg = '', ttl = '', boxShadow = '', heatPct = null;
-// 自动标空（引擎推导的空）用淡背景 + 虚线边框，与手动录入的空（×）区分
-if (v === 1 && S.source[r][c] === 'auto') { cls.push('auto'); bg = 'rgba(0,0,0,.30)'; }
+// 自动标空（引擎推导的空）用淡背景 + 虚线边框；但锁定格优先显示条纹（即使曾被自动标空）
+if (v === 1 && S.source[r][c] === 'auto' && !S.derived.locks?.has(k)) { cls.push('auto'); bg = 'rgba(0,0,0,.30)'; }
 if (v === 0 && !S.derived.locks?.has(k) && !S.derived.gameFinished && S.showHeatmap !== false) {
             const p = S.derived.prob?.[r]?.[c] || 0;
             if (p > 0) {
@@ -1018,8 +1018,8 @@ if (v === 0 && !S.derived.locks?.has(k) && !S.derived.gameFinished && S.showHeat
         if (S.derived.highConf?.has(k)) cls.push('possible');
         if (S.selected === k) cls.push('selected');
 // 锁定格（source='lock'）是逻辑推导的空，不显示"×"标记
-// 自动空显示小圆点"·"，手动空显示"×"
-let markText = v === 2 ? '●' : (v === 1 && S.source[r][c] !== 'lock') ? (S.source[r][c] === 'auto' ? '·' : '×') : '';
+// 自动空显示小圆点"·"，手动空显示"×"，锁定格无标记
+let markText = v === 2 ? '●' : (v === 1 && S.source[r][c] !== 'lock' && !S.derived.locks?.has(k)) ? (S.source[r][c] === 'auto' ? '·' : '×') : '';
         if (!markText && heatPct) markText = heatPct;
         // 手机排版：推荐 1/2/3 标号直接画在格子上
         if (S.mode === 'mobile' && v === 0 && !S.derived.gameFinished) {
