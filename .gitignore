@@ -3,6 +3,8 @@
 ShipSolver_v2.2.5_Desktop/
 ShipSolver_v2.4.9_Test/
 归档/
+# 上传发布包（独立文件夹，用户直接上传）
+上传/
 # 个人软件配置不入库
 .obsidian/
 # 本地发布包与图片底稿不入库（发布包作 Release 附件用）
