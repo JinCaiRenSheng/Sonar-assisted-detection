@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#17365f">
-<title>ShipSolver v2.4.9 桌面/手机双模式版</title>
+<title>ShipSolver v2.5.0 桌面/手机双模式版</title>
 <style>
 /* ================================================================
    CSS 变量 —— 统一管理所有颜色和尺寸
@@ -199,7 +199,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 </head>
 <body>
 <div class="container">
-<h1>🚢 ShipSolver v2.4.9 桌面/手机双模式版</h1>
+<h1>🚢 ShipSolver v2.5.0 桌面/手机双模式版</h1>
 <div class="subtitle">多策略评分 · 信息增益 · 自动确认</div>
 
 <div class="panel controls" id="topControls">
@@ -379,7 +379,7 @@ html[data-mode=mobile] input,html[data-mode=mobile] textarea,html[data-mode=mobi
 const App = (function() {
 'use strict';
 
-const VERSION = '2.4.9';
+const VERSION = '2.5.0';
 const SAVE_FORMAT = 2;
 const SAVE_KEY = 'shipsolver_saves';
 const AUTO_KEY = 'shipsolver_autosave_v2_0_0';
@@ -414,6 +414,7 @@ const S = {
     device: 'desktop',    // 设备类型：'desktop' | 'tablet' | 'phone'
     stats: {recGiven:0, recFollowed:0, recHit:0},
     autoArchived: false,   // 本盘完成是否已自动归档（每盘只存一次）
+    lastRec: null,         // 上一轮推荐格（B1 推荐稳定用）
     derived: {}
 };
 
@@ -422,12 +423,30 @@ const key = (r, c) => r + ',' + c;
 const inb = (r, c) => r >= 0 && r < S.rows && c >= 0 && c < S.cols;
 const clone = x => JSON.parse(JSON.stringify(x));
 
+// D1：存档压缩——board/source 用紧凑字符串编码（兼容旧格式读取）
+const SRC_MAP = {'': '.', manual: 'm', big: 'b', auto: 'a', lock: 'l', small_ship: 's', small_empty: 'e'};
+const SRC_UNMAP = {'.': '', m: 'manual', b: 'big', a: 'auto', l: 'lock', s: 'small_ship', e: 'small_empty'};
+function encodeBoardStr(b) { return b.flat().join(''); }
+function encodeSourceStr(src) { return src.flat().map(v => SRC_MAP[v] !== undefined ? SRC_MAP[v] : '?').join(''); }
+function decodeBoardStr(s, rows, cols) {
+    const b = Array.from({length: rows}, () => Array(cols).fill(0));
+    for (let i = 0; i < s.length && i < rows * cols; i++) b[Math.floor(i / cols)][i % cols] = +s[i] || 0;
+    return b;
+}
+function decodeSourceStr(s, rows, cols) {
+    const src = Array.from({length: rows}, () => Array(cols).fill(''));
+    for (let i = 0; i < s.length && i < rows * cols; i++) {
+        const ch = s[i], v = SRC_UNMAP[ch];
+        src[Math.floor(i / cols)][i % cols] = v !== undefined ? v : '';
+    }
+    return src;
+}
 function snap() {
-    return {
-        _fmt: SAVE_FORMAT,
-        rows: S.rows, cols: S.cols,
-        board: clone(S.board), source: clone(S.source),
-        config: clone(S.config), confirmed: [...S.confirmed],
+return {
+_fmt: SAVE_FORMAT,
+rows: S.rows, cols: S.cols,
+boardStr: encodeBoardStr(S.board), sourceStr: encodeSourceStr(S.source),   // D1 压缩
+config: clone(S.config), confirmed: [...S.confirmed],
         tools: clone(S.tools), events: clone(S.events),
         useHistoryPrior: S.useHistoryPrior, historyWeight: S.historyWeight,
         consecutiveMisses: S.consecutiveMisses,
@@ -437,20 +456,20 @@ function snap() {
     };
 }
 function restore(x) {
-    // 防护：校验数据完整性，不合法则拒绝
-    if (!x || typeof x.rows !== 'number' || typeof x.cols !== 'number' ||
-        x.rows < 3 || x.rows > 10 || x.cols < 3 || x.cols > 10 ||
-        !Array.isArray(x.board) || x.board.length !== x.rows) {
+// 防护：校验数据完整性，不合法则拒绝（兼容新压缩格式 boardStr 与旧数组格式 board）
+if (!x || typeof x.rows !== 'number' || typeof x.cols !== 'number' ||
+x.rows < 3 || x.rows > 10 || x.cols < 3 || x.cols > 10 ||
+!(Array.isArray(x.board) ? x.board.length === x.rows : (typeof x.boardStr === 'string' && x.boardStr.length === x.rows * x.cols))) {
         console.warn('ShipSolver: 存档数据损坏，使用新棋盘');
         // 损坏数据自动备份，避免修复时把玩家数据弄丢
         try { localStorage.setItem('shipsolver_corrupt_backup', JSON.stringify(x)); } catch(e) {}
         try { toast('⚠️ 检测到损坏存档，已自动备份并改用新棋盘'); } catch(_) {}
         initFresh(); return;
     }
-    Object.assign(S, {
-        rows: x.rows, cols: x.cols,
-        board: clone(x.board),
-        source: Array.isArray(x.source) && x.source.length === x.rows ? clone(x.source) : Array.from({length: x.rows}, () => Array(x.cols).fill('')),
+Object.assign(S, {
+rows: x.rows, cols: x.cols,
+board: x.boardStr ? decodeBoardStr(x.boardStr, x.rows, x.cols) : clone(x.board),
+source: x.sourceStr ? decodeSourceStr(x.sourceStr, x.rows, x.cols) : (Array.isArray(x.source) && x.source.length === x.rows ? clone(x.source) : Array.from({length: x.rows}, () => Array(x.cols).fill(''))),
         config: clone(x.config || {2:1}), confirmed: [...(x.confirmed || [])],
         tools: clone(x.tools || {bigDetect:2, smallDetect:9, sonarCoins:2540}),
         events: clone(x.events || []),
@@ -629,27 +648,14 @@ function scoreCells(placements, locks, bs, completed) {
     // 策略1：覆盖计数
     placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) cover[r][c]++; }));
 
-    // 策略1.5：邻域期望 —— 大探测只能点一个格子、探出位置不定，
-    // 推荐"点下去后周边3x3期望命中最多"的中心格，而不仅是单格概率最高
-    const neighborCover = Array.from({length: rows}, () => Array(cols).fill(0));
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        if (S.board[r][c] !== 0 || locks.has(key(r, c))) continue;
-        let s = 0;
-        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-            let nr = r + dr, nc = c + dc;
-            if (inb(nr, nc) && S.board[nr][nc] === 0 && !locks.has(key(nr, nc))) s += cover[nr][nc];
-        }
-        neighborCover[r][c] = s;
-    }
-
-    // 策略2：信息增益 —— 探这里能排除多少可能性
+// 策略2：信息增益 —— 探这里能排除多少可能性
     for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
         if (S.board[r][c] !== 0 || locks.has(key(r, c))) continue;
         let yes = 0, no = 0;
         placements.forEach(p => { let hit = p.cells.some(q => q[0] === r && q[1] === c); if (hit) yes++; else no++; });
         let total = yes + no;
-        // 目的 = 把所有的船探出来：覆盖（船概率）优先，平衡增益只作微调
-        if (total) { let balance = Math.min(yes, no) / Math.max(1, total); gain[r][c] = cover[r][c] * 0.5 + balance * 2; }
+        // 目的 = 把所有的船探出来：覆盖（船概率）优先，平衡增益仅同分微调（B2 降权）
+        if (total) { let balance = Math.min(yes, no) / Math.max(1, total); gain[r][c] = cover[r][c] * 0.5 + balance * 0.5; }
     }
 
     // 策略3：空密度感知 —— 已探空的密集区域船概率低，推荐向"未探/空少"区域倾斜；
@@ -678,9 +684,11 @@ const nearUnconfirmed = Array.from({length: rows}, () => Array(cols).fill(0));
 const isSmall = boardArea <= 25;
 // 剩余船型（用于判断碎片"只差确认"：仅一种船型能容纳时，延伸格最值得推荐）
 const remLens = new Set(placements.map(p => p.len));
+const remainingShipCount = Object.values(S.config).reduce((a, n) => a + n, 0) - completed.length;
 for (let ub of unconfirmedBlocks) {
 const fitLens = [...remLens].filter(l => l >= ub.len);
-const uniqueFit = (ub.h || ub.v) && fitLens.length === 1;   // 唯一容纳：碎片必属于该船型
+// 唯一容纳奖励只在剩船≤3时启用（B4：前期仍以覆盖为主，避免过度聚焦碎片）
+const uniqueFit = (ub.h || ub.v) && fitLens.length === 1 && remainingShipCount <= 3;
 for (let [ur, uc] of ub.cells) {
 let baseBonus = isSmall ? 6 : 5;  // 小盘邻近碎片信号更强
             DIR4.forEach(([dr, dc]) => {
@@ -721,9 +729,9 @@ nearUnconfirmed[nr][nc] += extBonus + (uniqueFit ? 12 : 0);
         let s;
         if (boardArea <= 25) {
             // 小盘：覆盖计数与邻域期望主导，碎片邻近高权重，忽略边缘策略
-            s = cover[r][c] * 2.4 + neighborCover[r][c] * 0.4 + nearUnconfirmed[r][c] * 2.5 + gain[r][c] * 0.5;
+            s = cover[r][c] * 2.4 + nearUnconfirmed[r][c] * 2.5 + gain[r][c] * 0.5;
         } else {
-            s = cover[r][c] * 1.3 + neighborCover[r][c] * 0.3 + gain[r][c] - emptyDensity[r][c] * 1.2 * edgeFactor + nearUnconfirmed[r][c] * 2.5;
+            s = cover[r][c] * 1.3 + gain[r][c] - emptyDensity[r][c] * 1.2 * edgeFactor + nearUnconfirmed[r][c] * 2.5;
         }
         for (let k of isolatedShips) { let [sr, sc] = k.split(',').map(Number); if (Math.abs(r - sr) === 1 && Math.abs(c - sc) === 1) s = Math.max(0, s - 2.0); }
         scores[r][c] = s;
@@ -738,7 +746,7 @@ nearUnconfirmed[nr][nc] += extBonus + (uniqueFit ? 12 : 0);
             for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
                 if (S.board[r][c] === 0 && !locks.has(key(r, c)))
                     scores[r][c] += ((hp.prior[r][c] || 0) / meanP - 1) * S.historyWeight * 10;
-        }
+        } else logRea('历史先验未启用（同尺寸历史盘不足 2 盘）');   // B6：不静默失效
     }
 
     let max = 0, best = null, top3 = [];
@@ -746,13 +754,19 @@ nearUnconfirmed[nr][nc] += extBonus + (uniqueFit ? 12 : 0);
         max = Math.max(max, scores[r][c]);
         if (S.board[r][c] === 0 && !locks.has(key(r, c))) {
             if (scores[r][c] <= 0) continue;  // 无任何方案覆盖的格子，不硬凑进推荐
-            let obj = {r, c, score: scores[r][c], gain: gain[r][c], cover: cover[r][c], neighbor: neighborCover[r][c], prob: placements.length ? cover[r][c] / placements.length : 0};
+            let obj = {r, c, score: scores[r][c], gain: gain[r][c], cover: cover[r][c], prob: placements.length ? cover[r][c] / placements.length : 0};
             if (!best || scores[r][c] > best.score) best = obj;
             top3.push(obj);
         }
     }
     top3.sort((a, b) => b.score - a.score);
-    top3 = top3.slice(0, 3);
+    // B5：top3 最小距离去重——相邻格（曼哈顿距离<2）只保留分数最高的，保证推荐互补
+    const picked = [];
+    for (const t of top3) {
+        if (picked.length >= 3) break;
+        if (picked.every(p => Math.abs(p.r - t.r) + Math.abs(p.c - t.c) >= 2)) picked.push(t);
+    }
+    top3 = picked;
     const normScores = scores.map(row => row.map(v => max ? v / max : 0));
     return {cover, scores: normScores, rawScores: scores, best, gain, top3};
 }
@@ -816,14 +830,21 @@ function autoConfirm(bs, placements, progress) {
         if (!candidates.length) return;
         // 所有覆盖该船块的候选方案长度和位置完全一致 → 唯一确定
         let exact = candidates.filter(p => p.cells.length === b.cells.length && p.cells.every(q => b.cells.some(c => c[0] === q[0] && c[1] === q[1])));
-        if (exact.length === candidates.length) { S.confirmed.push(b.sig); added = true; logRea('自动确认长度' + b.len + '的船'); }
+        if (exact.length === candidates.length) {
+            S.confirmed.push(b.sig); added = true;
+            // 记录自动确认的格子：必然绿展示 + 日志可追溯（A1 修复）
+            if (!S._autoConfirmedCells) S._autoConfirmedCells = new Set();
+            b.cells.forEach(([r, c]) => S._autoConfirmedCells.add(key(r, c)));
+            logRea('自动确认长度' + b.len + '的船：' + b.cells.map(p => '(' + (p[0] + 1) + ',' + (p[1] + 1) + ')').join(' '));
+        }
     });
     return added;
 }
 
 // 主推理函数：串联全部步骤
 function compute() {
-    const t0 = performance.now();
+const t0 = performance.now();
+S._autoConfirmedCells = new Set();
     // 计算当前剩余船型列表（排除已完成/已确认的船）
     function remOf(lp) {
         const rem = [];
@@ -857,16 +878,22 @@ function compute() {
         if (remaining.length && placements.length) {
             const cnt = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
             placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) cnt[r][c]++; }));
-            let marked = 0;
-            for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
-                if (S.board[r][c] === 0 && !lp.locks.has(key(r, c)) && cnt[r][c] === 0) {
-                    S.board[r][c] = 1; S.source[r][c] = 'auto'; marked++;
-                }
-            }
-            if (marked) { logRea('自动确认空' + marked + '格（无方案覆盖）'); changed = true; }
+let marked = 0; const markedCells = [];   // C3：记录被标空格子，日志可追溯
+for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+if (S.board[r][c] === 0 && !lp.locks.has(key(r, c)) && cnt[r][c] === 0) {
+S.board[r][c] = 1; S.source[r][c] = 'auto'; marked++; if (markedCells.length < 10) markedCells.push('(' + (r + 1) + ',' + (c + 1) + ')');
+}
+}
+if (marked) { logRea('自动确认空' + marked + '格（无方案覆盖）：' + markedCells.join(' ') + (marked > 10 ? ' 等' : '')); changed = true; }
         }
-        if (!changed) break;
-        refresh();
+    if (!changed) break;
+    refresh();
+    }
+    // A3：盘面矛盾检测——有剩余船但无任何合法方案（通常是误标导致）
+    let conflict = false;
+    if (remaining.length && !placements.length) {
+        conflict = true;
+        logRea('⚠️ 盘面矛盾：剩余船' + remaining.length + '艘无法放置，请检查误标（孤儿格/超长碎片/冲突标记）');
     }
 
     // ② 碎片合并推断：对每个未确认船块，若仅一种剩余船型能容纳且方案唯一，则强制
@@ -898,15 +925,22 @@ function compute() {
     const forcedCount = forced.size;
     // 保留本轮"必然船"集合用于绿色描边与面板展示（标记为船后重算会丢失该信息）
     const forcedShown = new Set(forced);
+    // 自动确认的船格也纳入"必然"展示（A1：让"必然→确认"链路可见）
+    if (S._autoConfirmedCells) S._autoConfirmedCells.forEach(k => forcedShown.add(k));
     if (forced.size) forced.forEach(k => { let [r, c] = k.split(',').map(Number); if (S.board[r][c] === 0) { S.board[r][c] = 2; S.source[r][c] = 'auto'; } });
     refresh();
+    // A5：与锁定重叠的自动标空格，数据层统一为 lock（此前先标空后成锁定的格仍为 auto）
+    for (const k of lp.locks.keys()) {
+        const [r, c] = k.split(',').map(Number);
+        if (S.board[r][c] === 1 && S.source[r][c] === 'auto') S.source[r][c] = 'lock';
+    }
     const gameFinished = remaining.length === 0;
     if (gameFinished) {
         // 全部船已确认：其余未知格必为空，补全盘面（source='lock' 保留推导来源）
-        let leftover = 0;
-        for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
-            if (S.board[r][c] === 0) { S.board[r][c] = 1; S.source[r][c] = 'lock'; leftover++; }
-        if (leftover) logRea('全部完成：剩余' + leftover + '格自动标空');
+let leftover = 0; const leftoverCells = [];   // C3：完成补全日志可追溯
+for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+if (S.board[r][c] === 0) { S.board[r][c] = 1; S.source[r][c] = 'lock'; leftover++; if (leftoverCells.length < 10) leftoverCells.push('(' + (r + 1) + ',' + (c + 1) + ')'); }
+if (leftover) logRea('全部完成：剩余' + leftover + '格自动标空：' + leftoverCells.join(' ') + (leftover > 10 ? ' 等' : ''));
         refresh();
         // 每盘完成自动归档（只存一次），保证至少 3 个月的盘面可恢复
         if (!S.autoArchived) { autoArchive(); S.autoArchived = true; }
@@ -936,22 +970,76 @@ function compute() {
                 highConf.add(key(r, c));
     }
     if (highConf.size) rea += ' 高置信' + highConf.size + '格';
-    if (gameFinished) rea += ' ✓完成';
-    rea += ' 耗时' + Math.round(performance.now() - t0) + 'ms';
-    logRea(rea);
+if (gameFinished) rea += ' ✓完成';
+rea += ' 耗时' + Math.round(performance.now() - t0) + 'ms';
+logRea(rea);
 
-    // 船概率矩阵（用于大探测热力图：被合法方案覆盖的比例）
-    const prob = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
-    let maxProb = 0;
-    if (placements.length) {
+// B1：推荐稳定——上一推荐格仍在前3且分差<15%时保持原推荐，避免来回跳
+if (!gameFinished && scored.top3 && scored.top3.length && S.lastRec) {
+    const prev = scored.top3.find(t => t.r === S.lastRec.r && t.c === S.lastRec.c);
+    if (prev && scored.top3[0].score > 0 && (scored.top3[0].score - prev.score) / scored.top3[0].score < 0.15) {
+        scored.best = prev;
+        bigArea = prev;
+    }
+}
+S.lastRec = scored.best ? {r: scored.best.r, c: scored.best.c} : null;
+
+// 船概率矩阵（用于大探测热力图：被合法方案覆盖的比例）
+const prob = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+let maxProb = 0;
+if (placements.length) {
+// A4：剩余船≤3 时做组合级精确概率（考虑船与船不能重叠/接触），否则用近似
+if (remaining.length <= 3) {
+    const byLen = {};
+    placements.forEach(p => { (byLen[p.len] = byLen[p.len] || []).push(p); });
+    const lens = Object.keys(byLen);
+    let cap = 1;
+    for (const l of lens) { cap *= byLen[l].length; if (cap > 30000) break; }
+    if (cap <= 30000 && lens.length) {
+        const count = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+        let total = 0, chosen = [];
+        const conflicts = p => chosen.some(q => q.cells.some(a => p.cells.some(b => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1)));
+        (function dfs(i) {
+            if (i === lens.length) {
+                total++;
+                for (const p of chosen) p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) count[r][c]++; });
+                return;
+            }
+            for (const p of byLen[lens[i]]) {
+                if (conflicts(p)) continue;
+                chosen.push(p); dfs(i + 1); chosen.pop();
+            }
+        })(0);
+        if (total) {
+            for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+                prob[r][c] = count[r][c] / total;
+                if (prob[r][c] > maxProb) maxProb = prob[r][c];
+            }
+            logRea('组合精确概率：' + total + ' 种组合');
+        } else {
+            placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) prob[r][c]++; }));
+            for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+                prob[r][c] = prob[r][c] / placements.length;
+                if (prob[r][c] > maxProb) maxProb = prob[r][c];
+            }
+        }
+    } else {
         placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) prob[r][c]++; }));
         for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
             prob[r][c] = prob[r][c] / placements.length;
             if (prob[r][c] > maxProb) maxProb = prob[r][c];
         }
     }
+} else {
+placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) prob[r][c]++; }));
+for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+prob[r][c] = prob[r][c] / placements.length;
+if (prob[r][c] > maxProb) maxProb = prob[r][c];
+}
+}
+}
 
-    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished};
+    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict};
 }
 
 // ==================================================================
@@ -1022,16 +1110,16 @@ if (v === 0 && !S.derived.locks?.has(k) && !S.derived.gameFinished && S.showHeat
                 else if (cur === 1) { bg = 'rgba(0,0,0,.72)'; boxShadow = 'inset 0 0 0 3px rgba(255,255,255,.6)'; }
             }
         }
-        // 游戏完成时不显示任何推荐高亮
-        if (!S.derived.gameFinished && !S.derived.locks?.has(k)) {
+// 游戏完成时不显示任何推荐高亮；必然格优先，不叠加推荐/高置信高亮（E1）
+if (!S.derived.gameFinished && !S.derived.locks?.has(k) && !S.derived.forced?.has(k)) {
             if ((S.derived.scores?.[r]?.[c] || 0) > 0.45 && v === 0) cls.push('possible');
             if (S.derived.best && S.derived.best.r === r && S.derived.best.c === c) cls.push('high');
             if (S.derived.top3?.[1] && S.derived.top3[1].r === r && S.derived.top3[1].c === c) cls.push('top2');
             if (S.derived.top3?.[2] && S.derived.top3[2].r === r && S.derived.top3[2].c === c) cls.push('top3');
             if (S.derived.bigArea && S.derived.bigArea.r === r && S.derived.bigArea.c === c) cls.push('big-area');
         }
-        if (S.derived.forced?.has(k)) cls.push('forced');
-        if (S.derived.highConf?.has(k)) cls.push('possible');
+if (S.derived.forced?.has(k)) cls.push('forced');
+if (S.derived.highConf?.has(k) && !S.derived.forced?.has(k)) cls.push('possible');
         if (S.selected === k) cls.push('selected');
 // 锁定格（source='lock'）是逻辑推导的空，不显示"×"标记
 // 自动空显示小圆点"·"，手动空显示"×"，锁定格无标记
@@ -1146,14 +1234,14 @@ function renderPanels() {
     try {
     // 推荐不足 3 个时按实际数量显示，绝不硬凑零分格子
     let recs = (S.derived.top3 && S.derived.top3.length) ? S.derived.top3 : (S.derived.best ? [S.derived.best] : []);
-    $('suggestion').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">🎉 全部船只已确认，无需继续探测。</b>' : recs.length ? '推荐探测（前' + recs.length + '）：<br>' + recs.map((t, i) => '<b style="color:' + (i===0?'#ffd95a':i===1?'#e8c96a':'#cfd8e3') + '">' + (i+1) + '. (' + (t.r + 1) + ',' + (t.c + 1) + ')</b> 覆盖' + t.cover + ' 命中率' + Math.round((t.prob || 0) * 100) + '%').join('<br>') : '暂无可推荐格子';
+    $('suggestion').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">🎉 全部船只已确认，无需继续探测。</b>' : S.derived.conflict ? '<b style="color:#ff6b6b">⚠️ 盘面矛盾：当前标记与剩余船只冲突，请检查误标或撤销重来</b>' : recs.length ? '推荐探测（前' + recs.length + '）：<br>' + recs.map((t, i) => '<b style="color:' + (i===0?'#ffd95a':i===1?'#e8c96a':'#cfd8e3') + '">' + (i+1) + '. (' + (t.r + 1) + ',' + (t.c + 1) + ')</b> 覆盖' + t.cover + ' 命中率' + Math.round((t.prob || 0) * 100) + '%').join('<br>') : '暂无可推荐格子';
     if (recs.length && !S.derived.gameFinished) S.stats.recGiven++;
     } catch(e) { console.error('ShipSolver: 建议面板渲染失败', e); }
     try {
     $('smallRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">全部船只已确认 ✓</b>' : (S.derived.forced?.size || S.derived.highConf?.size) ? (S.derived.forced?.size ? '必然船格：' + [...S.derived.forced].map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') + (S.derived.highConf?.size ? '<br>' : '') : '') + (S.derived.highConf?.size ? '高置信格（>60%）：' + [...S.derived.highConf].slice(0,6).map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') : '') : '当前无必然船格';
     } catch(e) { console.error('ShipSolver: 必然船面板渲染失败', e); }
     try {
-    $('bigRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">所有船只已确认，无需大探测。</b>' : S.derived.bigArea ? '推荐大探测点：<b>(' + (S.derived.bigArea.r + 1) + ',' + (S.derived.bigArea.c + 1) + ')</b><br>单格命中率：' + Math.round((S.derived.bigArea.prob || 0) * 100) + '%｜周边期望命中：' + (S.derived.placements.length ? (S.derived.bigArea.neighbor / S.derived.placements.length).toFixed(1) : 0) + ' 格' : '暂无大探测推荐';
+    $('bigRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">所有船只已确认，无需大探测。</b>' : S.derived.bigArea ? '推荐大探测点：<b>(' + (S.derived.bigArea.r + 1) + ',' + (S.derived.bigArea.c + 1) + ')</b><br>单格命中率：' + Math.round((S.derived.bigArea.prob || 0) * 100) + '%' : '暂无大探测推荐';
     } catch(e) { console.error('ShipSolver: 大探测面板渲染失败', e); }
     try {
     $('events').innerHTML = S.events.slice(-8).reverse().map(e => '<div class="event">' + e.time + '｜' + e.text + '</div>').join('');
@@ -1365,7 +1453,7 @@ function mark(r, c, val) {
     if (prevRec) actDetail += ' | 推('+(prevRec.r+1)+','+(prevRec.c+1)+')'+(followed?'✓':'✗');
     // 结构化"预测→实际"：推荐格、是否被探、实际是否船
     logAct(val===2?'标记船':val===1?'标记空':'取消标记', actDetail,
-        prevRec ? {r: prevRec.r, c: prevRec.c, followed, hit: !!(followed && S.board[r][c] === 2)} : null);
+        prevRec ? {r: prevRec.r, c: prevRec.c, prob: prevRec.prob || 0, followed, hit: !!(followed && S.board[r][c] === 2)} : null);
 }
 
 // ==================================================================
@@ -1469,9 +1557,9 @@ function confirmSelectedShip() {
     logAct('按钮确认船', '确认：长度' + target.len);
 }
 function undo() { if (!S.undo.length) return; S.redo.push(snap()); restore(S.undo.pop()); saveUndoStack(); }
-function resetGame() { if (!confirm('确认重置当前棋盘？')) return; S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.consecutiveMisses = 0; S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
+function resetGame() { if (!confirm('确认重置当前棋盘？')) return; S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.consecutiveMisses = 0; S.autoArchived = false; S.lastRec = null; S.startedAt = Date.now(); compute(); render(); }
 function startBig() { S.big = {changes: {}}; if (S.mode === 'mobile') { const b = $('opBody'); if (b) b.classList.add('open'); } render(); }
-function confirmBig() { if (!S.big) return; push(); let lastShip = null, prevRec = S.derived.best ? {r: S.derived.best.r, c: S.derived.best.c} : null; let hit = 0, applied = 0, ships = 0, empties = 0; let cells = [], hist = []; let recFollowed = false, recKey = prevRec ? key(prevRec.r, prevRec.c) : null; if (recKey && S.big.changes[recKey] !== undefined) { S.stats.recFollowed++; recFollowed = true; } Object.entries(S.big.changes).forEach(([k, v]) => { let [r, c] = k.split(',').map(Number); S.board[r][c] = v; S.source[r][c] = 'big'; applied++; cells.push((r+1)+','+(c+1)+(v===2?'船':'空')); hist.push([r, c, v]); if (v === 2) { S.tools.sonarCoins += 10; ships++; lastShip = [r, c]; if (k === recKey) { S.stats.recHit++; hit++; } } else { empties++; } }); if (lastShip) S.lastMark = lastShip; if (hist.length) S.bigHistory.push(hist); S.consecutiveMisses = 0; S.events.push({time: new Date().toLocaleTimeString('zh-CN', {hour12: false}), text: '大探测确认 ' + applied + ' 格'}); if (S.events.length > 100) S.events.shift(); logAct('big_confirm', applied + '格(船' + ships + '空' + empties + ') ' + cells.join(' ') + (recFollowed ? ' 采纳推荐' + (hit ? '✓命中船' : '✗落空') : ' 未采纳推荐'), prevRec ? {r: prevRec.r, c: prevRec.c, followed: recFollowed, hit: !!hit} : null); S.big = null; compute(); render(); }
+function confirmBig() { if (!S.big) return; push(); let lastShip = null, prevRec = S.derived.best ? {r: S.derived.best.r, c: S.derived.best.c} : null; let hit = 0, applied = 0, ships = 0, empties = 0; let cells = [], hist = []; let recFollowed = false, recKey = prevRec ? key(prevRec.r, prevRec.c) : null; if (recKey && S.big.changes[recKey] !== undefined) { S.stats.recFollowed++; recFollowed = true; } Object.entries(S.big.changes).forEach(([k, v]) => { let [r, c] = k.split(',').map(Number); S.board[r][c] = v; S.source[r][c] = 'big'; applied++; cells.push((r+1)+','+(c+1)+(v===2?'船':'空')); hist.push([r, c, v]); if (v === 2) { S.tools.sonarCoins += 10; ships++; lastShip = [r, c]; if (k === recKey) { S.stats.recHit++; hit++; } } else { empties++; } }); if (lastShip) S.lastMark = lastShip; if (hist.length) S.bigHistory.push(hist); S.consecutiveMisses = 0; S.events.push({time: new Date().toLocaleTimeString('zh-CN', {hour12: false}), text: '大探测确认 ' + applied + ' 格'}); if (S.events.length > 100) S.events.shift(); logAct('big_confirm', applied + '格(船' + ships + '空' + empties + ') ' + cells.join(' ') + (recFollowed ? ' 采纳推荐' + (hit ? '✓命中船' : '✗落空') : ' 未采纳推荐'), prevRec ? {r: prevRec.r, c: prevRec.c, prob: prevRec.prob || 0, followed: recFollowed, hit: !!hit} : null); S.big = null; compute(); render(); }
 function cancelBig() { S.big = null; render(); }
 function clearEvents() { S.events = []; render(); }
 function editResources() { let b = prompt('大探测次数', S.tools.bigDetect), s = prompt('小探测次数', S.tools.smallDetect), c = prompt('声呐币', S.tools.sonarCoins); if (b !== null) S.tools.bigDetect = Math.max(0, +b || 0); if (s !== null) S.tools.smallDetect = Math.max(0, +s || 0); if (c !== null) S.tools.sonarCoins = Math.max(0, +c || 0); render(); }
@@ -1503,7 +1591,7 @@ function clearAllSaves() { if (confirm('确认删除全部存档（所有期）�
 function showHelp() { $('helpModal').classList.add('show'); }
 function closeModal(id) { $(id).classList.remove('show'); }
 function openBoardSettings() { $('modalRows').value = S.rows; $('modalCols').value = S.cols; $('modalConfig').innerHTML = Object.keys(S.config).sort((a, b) => b - a).map(l => '<label class="config-item">' + l + '格×<input data-len="' + l + '" type="number" min="0" max="9" value="' + S.config[l] + '"></label>').join(''); $('boardModal').classList.add('show'); }
-function applyBoardSettings() { S.rows = Math.max(3, Math.min(10, +$('modalRows').value || 10)); S.cols = Math.max(3, Math.min(10, +$('modalCols').value || 10)); let cfg = {}; $('modalConfig').querySelectorAll('input').forEach(i => cfg[i.dataset.len] = Math.max(0, +i.value || 0)); S.config = cfg; closeModal('boardModal'); S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.autoArchived = false; S.startedAt = Date.now(); compute(); render(); }
+function applyBoardSettings() { S.rows = Math.max(3, Math.min(10, +$('modalRows').value || 10)); S.cols = Math.max(3, Math.min(10, +$('modalCols').value || 10)); let cfg = {}; $('modalConfig').querySelectorAll('input').forEach(i => cfg[i.dataset.len] = Math.max(0, +i.value || 0)); S.config = cfg; closeModal('boardModal'); S.board = Array.from({length: S.rows}, () => Array(S.cols).fill(0)); S.source = Array.from({length: S.rows}, () => Array(S.cols).fill('')); S.confirmed = []; S.events = []; S.selected = null; S.lastMark = null; S.big = null; S.undo = []; S.redo = []; saveUndoStack(); S.autoArchived = false; S.lastRec = null; S.startedAt = Date.now(); compute(); render(); }
 let lastFeedbackText = '';
 function exportFeedback() {
     const fb = {
