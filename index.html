@@ -480,17 +480,32 @@ Object.assign(S, {
 rows: x.rows, cols: x.cols,
 board: x.boardStr ? decodeBoardStr(x.boardStr, x.rows, x.cols) : clone(x.board),
 source: x.sourceStr ? decodeSourceStr(x.sourceStr, x.rows, x.cols) : (Array.isArray(x.source) && x.source.length === x.rows ? clone(x.source) : Array.from({length: x.rows}, () => Array(x.cols).fill(''))),
-        config: clone(x.config || {2:1}), confirmed: [...(x.confirmed || [])],
+    config: clone(x.config || {2:1}), confirmed: [...new Set(x.confirmed || [])],   // 去重：旧版可能重复确认
         tools: clone(x.tools || {bigDetect:2, smallDetect:9, sonarCoins:2540}),
         events: clone(x.events || []),
         useHistoryPrior: !!x.useHistoryPrior, historyWeight: x.historyWeight ?? 0.2,
         consecutiveMisses: x.consecutiveMisses || 0,
         autoArchived: !!x.finished,   // 已完成盘恢复时不重复自动归档
         startedAt: Date.now(),
-        stats: (x.stats && typeof x.stats === 'object') ?
-            {recGiven: x.stats.recGiven || 0, recFollowed: x.stats.recFollowed || 0, recHit: x.stats.recHit || 0} :
-            {recGiven: 0, recFollowed: 0, recHit: 0},
+    stats: (x.stats && typeof x.stats === 'object') ?
+    {recGiven: x.stats.recGiven || 0, recFollowed: x.stats.recFollowed || 0, recHit: x.stats.recHit || 0} :
+    {recGiven: 0, recFollowed: 0, recHit: 0},
     });
+// 恢复时清理"未确认的引擎推导格"（auto/lock）：
+// 自动存档可能固化旧版推导 bug 的标船/标空，恢复后让引擎重新推导；
+// 已确认船（confirmed 中的 auto 格）与玩家录入（manual/big）保留
+{
+    const confCells = new Set();
+    (x.confirmed || []).forEach(sig => sig.split('|').forEach(k => confCells.add(k)));
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+        const src = S.source[r][c];
+        if (src === 'auto' || src === 'lock') {
+            if (S.board[r][c] === 1 || (S.board[r][c] === 2 && !confCells.has(key(r, c)))) {
+                S.board[r][c] = 0; S.source[r][c] = '';
+            }
+        }
+    }
+}
     compute(); render();
 }
 // ===== B 档：撤销栈持久化（重启后仍可回退，保留最近 30 步）=====
@@ -625,8 +640,8 @@ function enumerate(locks, remaining) {
 const out = [];
 // 只剩一艘船时：方案必须覆盖所有未确认船格（否则这些格会成为"孤儿"，污染候选与必然判定）
 const mustCoverAll = remaining.length === 1 ? (() => {
-    const confirmedSet = new Set();
-    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+const confirmedSet = new Set();
+S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));   // 格子 key 集合（mustCoverAll 需要）
     const list = [];
     for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
         if (S.board[r][c] === 2 && !confirmedSet.has(key(r, c))) list.push([r, c]);
@@ -913,10 +928,9 @@ if (forced.size) {
 // （例：只剩 2船 时，(8,4)(9,4) 碎片两端无需再测）
 if (remaining.length && placements.length) {
     const remSet = new Set(remaining);
-    const confirmedSet = new Set();
-    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    const confirmedSet = new Set(S.confirmed);   // 存完整 sig 用于防重（修 bug）
     for (const ub of bs) {
-        if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
+        if (ub.len < 2 || !(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
         if (!remSet.has(ub.len)) continue;
         const hasLonger = [...remSet].some(l => l > ub.len);
         if (hasLonger) continue;
@@ -934,10 +948,9 @@ if (remaining.length && placements.length) {
 // 若只剩一个合法延伸方向 → 该格必然船（标绿）
 if (remaining.length && placements.length) {
     const remSet = new Set(remaining);
-    const confirmedSet = new Set();
-    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+const confirmedSet = new Set(S.confirmed);   // 完整 sig 集合（碎片推导防重）
     for (const ub of bs) {
-        if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
+        if (ub.len < 2 || !(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
         const fitLens = [...remSet].filter(l => l >= ub.len);
         if (!fitLens.length) continue;
         if (remSet.has(ub.len) || !fitLens.some(l => l > ub.len)) continue;   // 可独立成船 或 无更长船（前块已处理）
