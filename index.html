@@ -84,6 +84,7 @@ input,select,textarea{
 .cell.forced{box-shadow:inset 0 0 0 4px #54ff9e,0 0 8px rgba(84,255,158,.75)}
 .cell.big-area{box-shadow:inset 0 0 0 2px rgba(90,176,255,.7)}
 .cell.selected{outline:3px solid #fff;z-index:4}
+.cell.ext-hint{box-shadow:inset 0 0 0 3px #4fc3f7,0 0 10px rgba(79,195,247,.8);z-index:3}
 .sidebar{display:flex;flex-direction:column;gap:10px}
 .accordion-header{
   display:flex;justify-content:space-between;align-items:center;cursor:pointer;
@@ -1075,7 +1076,28 @@ if (prob[r][c] > maxProb) maxProb = prob[r][c];
 }
 }
 
-    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict};
+// 延伸建议：未确认直线碎片的外侧延伸格（"探到船后优先试哪里"）
+// 两端都通 → 都提示；只剩一端通 → 该端是唯一方向（强提示）
+const extendHints = new Set();
+if (!gameFinished) {
+    const confirmedSet = new Set();
+    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    for (const ub of bs) {
+        if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
+        const ends = ub.h ? [[ub.minR, ub.minC - 1], [ub.minR, ub.maxC + 1]] : [[ub.minR - 1, ub.minC], [ub.maxR + 1, ub.minC]];
+        const okEnds = ends.filter(([r, c]) => {
+            if (!inb(r, c) || S.board[r][c] !== 0 || lp.locks.has(key(r, c))) return false;
+            for (const [dr, dc] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+                const x = r + dr, y = c + dc;
+                if (inb(x, y) && S.board[x][y] === 2 && !ub.cells.some(q => q[0] === x && q[1] === y)) return false;
+            }
+            return true;
+        });
+        okEnds.forEach(([r, c]) => extendHints.add(key(r, c)));
+    }
+}
+
+    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict, extendHints};
 }
 
 // ==================================================================
@@ -1157,6 +1179,7 @@ if (!S.derived.gameFinished && !S.derived.locks?.has(k) && !S.derived.forced?.ha
             if (S.derived.bigArea && S.derived.bigArea.r === r && S.derived.bigArea.c === c) cls.push('big-area');
         }
 if (S.derived.forced?.has(k)) cls.push('forced');
+if (S.derived.extendHints?.has(k)) cls.push('ext-hint');
 if (S.derived.highConf?.has(k) && !S.derived.forced?.has(k)) cls.push('possible');
         if (S.selected === k) cls.push('selected');
 // 锁定格（source='lock'）是逻辑推导的空，不显示"×"标记
@@ -1276,7 +1299,9 @@ function renderPanels() {
     if (recs.length && !S.derived.gameFinished) S.stats.recGiven++;
     } catch(e) { console.error('ShipSolver: 建议面板渲染失败', e); }
     try {
-    $('smallRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">全部船只已确认 ✓</b>' : (S.derived.forced?.size || S.derived.highConf?.size) ? (S.derived.forced?.size ? '必然船格：' + [...S.derived.forced].map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') + (S.derived.highConf?.size ? '<br>' : '') : '') + (S.derived.highConf?.size ? '高置信格（>60%）：' + [...S.derived.highConf].slice(0,6).map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') : '') : '当前无必然船格';
+    let extHtml = '';
+    if (S.derived.extendHints?.size) extHtml = (S.derived.forced?.size || S.derived.highConf?.size ? '<br>' : '') + '🔵 延伸建议：' + [...S.derived.extendHints].map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、');
+    $('smallRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">全部船只已确认 ✓</b>' : ((S.derived.forced?.size || S.derived.highConf?.size) ? (S.derived.forced?.size ? '必然船格：' + [...S.derived.forced].map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') + (S.derived.highConf?.size ? '<br>' : '') : '') + (S.derived.highConf?.size ? '高置信格（>60%）：' + [...S.derived.highConf].slice(0,6).map(k => { let [r, c] = k.split(',').map(Number); return '(' + (r + 1) + ',' + (c + 1) + ')'; }).join('、') : '') : '当前无必然船格') + extHtml;
     } catch(e) { console.error('ShipSolver: 必然船面板渲染失败', e); }
     try {
     $('bigRecommend').innerHTML = S.derived.gameFinished ? '<b style="color:#78ff9a">所有船只已确认，无需大探测。</b>' : S.derived.bigArea ? '推荐大探测点：<b>(' + (S.derived.bigArea.r + 1) + ',' + (S.derived.bigArea.c + 1) + ')</b><br>单格命中率：' + Math.round((S.derived.bigArea.prob || 0) * 100) + '%' : '暂无大探测推荐';
