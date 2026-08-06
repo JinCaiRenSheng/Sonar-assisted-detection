@@ -97,6 +97,15 @@ input,select,textarea{
 .status-grid div,.event{padding:5px 7px;border-radius:5px;background:rgba(0,0,0,.2)}
 .suggest{border:1px solid #ffd95a;border-radius:7px;padding:8px;background:rgba(255,215,0,.08);font-size:11px;line-height:1.55}
 .event{font-size:10px;margin-top:5px;line-height:1.45}
+/* 电脑端侧边栏字体放大（不影响手机版） */
+html:not([data-mode=mobile]) .sidebar .accordion-header{font-size:15px}
+html:not([data-mode=mobile]) .sidebar .accordion-body{font-size:13px}
+html:not([data-mode=mobile]) .sidebar .badge{font-size:12.5px}
+html:not([data-mode=mobile]) .sidebar .status-grid{font-size:13px}
+html:not([data-mode=mobile]) .sidebar .suggest{font-size:13px}
+html:not([data-mode=mobile]) .sidebar .hint{font-size:12px}
+html:not([data-mode=mobile]) .sidebar .event{font-size:12px}
+html:not([data-mode=mobile]) .sidebar button{font-size:13px;min-height:38px}
 .config-item{display:inline-flex;align-items:center;gap:2px;padding:2px 4px;border-radius:4px;background:rgba(0,0,0,.2)}
 .config-item input{width:34px;padding:2px 3px}
 .modal-bg{
