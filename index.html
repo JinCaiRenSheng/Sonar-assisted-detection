@@ -1068,7 +1068,9 @@ function renderGrid() {
     const grid = $('grid');
     let cell = responsiveCell();
     document.documentElement.style.setProperty('--cell-size', cell + 'px');
-    const w = (S.cols + S.rows) * cell / Math.SQRT2, h = w;
+// 四周预留半格：菱形尖角不越出棋盘边界（修复 (1,1) 等边缘格子上角被裁）
+const half = cell / Math.SQRT2 / 2;
+const w = (S.cols + S.rows) * cell / Math.SQRT2 + cell, h = w;
     if (grid.style.width !== w + 'px') { grid.style.width = w + 'px'; grid.style.height = h + 'px'; }
     // 行列数变化时重建缓存
     if (gridCells.length !== S.rows || (gridCells[0] && gridCells[0].length !== S.cols)) {
@@ -1083,7 +1085,7 @@ function renderGrid() {
             d.dataset.r = r; d.dataset.c = c;
             gridCells[r][c] = d; grid.appendChild(d);
         }
-        let x = (c - r + S.rows - 1) * cell / Math.SQRT2, y = (c + r) * cell / Math.SQRT2;
+let x = (c - r + S.rows - 1) * cell / Math.SQRT2 + half, y = (c + r) * cell / Math.SQRT2 + half;
         d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.transform = 'rotate(45deg)';
         let v = S.board[r][c], k = key(r, c);
         const cls = ['cell'];
