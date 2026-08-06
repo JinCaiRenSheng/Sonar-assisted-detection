@@ -895,9 +895,30 @@ S._autoConfirmedCells = new Set();
     //    强制空格：没有任何合法方案覆盖的未知格 = 必然为空
     let guard = 0;
     while (guard++ < 60) {
-        let changed = false;
-        if (autoConfirm(bs, placements, lp.progress)) changed = true;
-        if (remaining.length && placements.length) {
+let changed = false;
+if (autoConfirm(bs, placements, lp.progress)) changed = true;
+// 碎片长度确定性：剩余船型均 ≤ 碎片长度时，碎片必为完整船，两端延伸格必空
+// （例：只剩 2船 时，(8,4)(9,4) 碎片两端无需再测）
+if (remaining.length && placements.length) {
+    const remSet = new Set(remaining);
+    const confirmedSet = new Set();
+    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    for (const ub of bs) {
+        if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
+        if (!remSet.has(ub.len)) continue;
+        const hasLonger = [...remSet].some(l => l > ub.len);
+        if (hasLonger) continue;
+        S.confirmed.push(ub.sig);
+        let lockedEnds = 0;
+        const ends = ub.h ? [[ub.minR, ub.minC - 1], [ub.minR, ub.maxC + 1]] : [[ub.minR - 1, ub.minC], [ub.maxR + 1, ub.minC]];
+        for (const [r, c] of ends) {
+            if (inb(r, c) && S.board[r][c] === 0) { S.board[r][c] = 1; S.source[r][c] = 'lock'; lockedEnds++; }
+        }
+        logRea('碎片确认：长度' + ub.len + '的船（无更长船型可容纳）' + (lockedEnds ? '，两端已标空' + lockedEnds + '格' : ''));
+        changed = true;
+    }
+}
+if (remaining.length && placements.length) {
             const cnt = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
             placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) cnt[r][c]++; }));
 let marked = 0; const markedCells = [];   // C3：记录被标空格子，日志可追溯
