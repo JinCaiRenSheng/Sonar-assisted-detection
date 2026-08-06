@@ -918,6 +918,29 @@ if (remaining.length && placements.length) {
         changed = true;
     }
 }
+// 被迫延伸：碎片长度无对应剩余船型（不能独立成船）但有更长船型时，碎片必须延伸；
+// 若只剩一个合法延伸方向 → 该格必然船（标绿）
+if (remaining.length && placements.length) {
+    const remSet = new Set(remaining);
+    const confirmedSet = new Set();
+    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    for (const ub of bs) {
+        if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
+        const fitLens = [...remSet].filter(l => l >= ub.len);
+        if (!fitLens.length) continue;
+        if (remSet.has(ub.len) || !fitLens.some(l => l > ub.len)) continue;   // 可独立成船 或 无更长船（前块已处理）
+        const ends = ub.h ? [[ub.minR, ub.minC - 1], [ub.minR, ub.maxC + 1]] : [[ub.minR - 1, ub.minC], [ub.maxR + 1, ub.minC]];
+        const okEnds = ends.filter(([r, c]) => inb(r, c) && S.board[r][c] === 0 && !lp.locks.has(key(r, c)));
+        if (okEnds.length === 1) {
+            const [r, c] = okEnds[0];
+            S.board[r][c] = 2; S.source[r][c] = 'auto';
+            if (!S._autoConfirmedCells) S._autoConfirmedCells = new Set();
+            S._autoConfirmedCells.add(key(r, c));
+            logRea('被迫延伸：长度' + ub.len + '的碎片只能向(' + (r + 1) + ',' + (c + 1) + ')延伸，必然船');
+            changed = true;
+        }
+    }
+}
 if (remaining.length && placements.length) {
             const cnt = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
             placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) cnt[r][c]++; }));
