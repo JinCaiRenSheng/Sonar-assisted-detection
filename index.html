@@ -621,9 +621,21 @@ function locksAndProgress(bs) {
 
 // [3]+[4] 枚举所有合法摆放方案
 function enumerate(locks, remaining) {
-    const out = [];
-    function valid(cells) {
-        let set = new Set(cells.map(p => key(...p)));
+const out = [];
+// 只剩一艘船时：方案必须覆盖所有未确认船格（否则这些格会成为"孤儿"，污染候选与必然判定）
+const mustCoverAll = remaining.length === 1 ? (() => {
+    const confirmedSet = new Set();
+    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    const list = [];
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+        if (S.board[r][c] === 2 && !confirmedSet.has(key(r, c))) list.push([r, c]);
+    return list.length ? list : null;
+})() : null;
+function valid(cells) {
+let set = new Set(cells.map(p => key(...p)));
+if (mustCoverAll) {
+    for (const [r, c] of mustCoverAll) if (!set.has(key(r, c))) return false;
+}
         // 已确认的船已完成：任何方案不得再与它们重叠（否则会污染候选数与必然格判定）
         for (let sig of S.confirmed) {
             for (let k of sig.split('|')) if (set.has(k)) return false;
@@ -899,13 +911,28 @@ if (marked) { logRea('自动确认空' + marked + '格（无方案覆盖）：' 
     refresh();
     }
     // A3：盘面矛盾检测——有剩余船但无任何合法方案（通常是误标导致）
-    let conflict = false;
-    if (remaining.length && !placements.length) {
+let conflict = false;
+if (remaining.length && !placements.length) {
+conflict = true;
+logRea('⚠️ 盘面矛盾：剩余船' + remaining.length + '艘无法放置，请检查误标（孤儿格/超长碎片/冲突标记）');
+}
+// 孤儿格检测：未确认船格不被任何剩余方案覆盖 = 误标（如 (1,5) 只剩 2船 时只能向下延伸）
+if (!conflict && remaining.length) {
+    const coveredSet = new Set();
+    placements.forEach(p => p.cells.forEach(([r, c]) => coveredSet.add(key(r, c))));
+    const confirmedSet = new Set();
+    S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
+    const orphans = [];
+    for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+        if (S.board[r][c] === 2 && !confirmedSet.has(key(r, c)) && !coveredSet.has(key(r, c)))
+            orphans.push('(' + (r + 1) + ',' + (c + 1) + ')');
+    if (orphans.length) {
         conflict = true;
-        logRea('⚠️ 盘面矛盾：剩余船' + remaining.length + '艘无法放置，请检查误标（孤儿格/超长碎片/冲突标记）');
+        logRea('⚠️ 孤儿船格：' + orphans.join(' ') + ' 无任何剩余船能覆盖，请检查误标');
     }
+}
 
-    // ② 碎片合并推断：对每个未确认船块，若仅一种剩余船型能容纳且方案唯一，则强制
+// ② 碎片合并推断：对每个未确认船块，若仅一种剩余船型能容纳且方案唯一，则强制
     let fragChanged = true;
     while (fragChanged && guard++ < 80) {
         fragChanged = false;
