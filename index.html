@@ -897,6 +897,18 @@ S._autoConfirmedCells = new Set();
     while (guard++ < 60) {
 let changed = false;
 if (autoConfirm(bs, placements, lp.progress)) changed = true;
+// forced 标船：所有方案必经的格自动标船，并继续迭代（让唯一块自动确认整船，
+// 玩家无需再手动点"确认整船"）
+if (forced.size) {
+    forced.forEach(k => {
+        const [r, c] = k.split(',').map(Number);
+        if (S.board[r][c] === 0) { S.board[r][c] = 2; S.source[r][c] = 'auto'; }
+        S.lastMark = [r, c];   // 自动标船点作为"确认整船"的锚点，玩家无需再手动选
+        if (!S._autoConfirmedCells) S._autoConfirmedCells = new Set();
+        S._autoConfirmedCells.add(k);
+    });
+    changed = true;
+}
 // 碎片长度确定性：剩余船型均 ≤ 碎片长度时，碎片必为完整船，两端延伸格必空
 // （例：只剩 2船 时，(8,4)(9,4) 碎片两端无需再测）
 if (remaining.length && placements.length) {
@@ -934,6 +946,7 @@ if (remaining.length && placements.length) {
         if (okEnds.length === 1) {
             const [r, c] = okEnds[0];
             S.board[r][c] = 2; S.source[r][c] = 'auto';
+            S.lastMark = [r, c];   // 被迫延伸点作为确认锚点
             if (!S._autoConfirmedCells) S._autoConfirmedCells = new Set();
             S._autoConfirmedCells.add(key(r, c));
             logRea('被迫延伸：长度' + ub.len + '的碎片只能向(' + (r + 1) + ',' + (c + 1) + ')延伸，必然船');
@@ -1008,7 +1021,7 @@ if (!conflict && remaining.length) {
     const forcedShown = new Set(forced);
     // 自动确认的船格也纳入"必然"展示（A1：让"必然→确认"链路可见）
     if (S._autoConfirmedCells) S._autoConfirmedCells.forEach(k => forcedShown.add(k));
-    if (forced.size) forced.forEach(k => { let [r, c] = k.split(',').map(Number); if (S.board[r][c] === 0) { S.board[r][c] = 2; S.source[r][c] = 'auto'; } });
+if (forced.size) forced.forEach(k => { let [r, c] = k.split(',').map(Number); if (S.board[r][c] === 0) { S.board[r][c] = 2; S.source[r][c] = 'auto'; } S.lastMark = [r, c]; });
     refresh();
     // A5：与锁定重叠的自动标空格，数据层统一为 lock（此前先标空后成锁定的格仍为 auto）
     for (const k of lp.locks.keys()) {
