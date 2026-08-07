@@ -1187,6 +1187,18 @@ if (!gameFinished) {
     }
 }
 
+    // 组合必然标船后：整船唯一时自动确认（避免绿格堆积、玩家逐个处理）
+    if (S._autoConfirmedCells && S._autoConfirmedCells.size) {
+        let again = true, g2 = 0;
+        while (again && g2++ < 10) {
+            again = false;
+            bs = blocks(); lp = locksAndProgress(bs);
+            remaining = remOf(lp);
+            placements = enumerate(lp.locks, remaining);
+            if (autoConfirm(bs, placements, lp.progress)) again = true;
+        }
+        refresh();   // 刷新评分/推荐/必然集合
+    }
     S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict, extendHints};
 }
 
