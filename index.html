@@ -85,6 +85,7 @@ input,select,textarea{
 .cell.big-area{box-shadow:inset 0 0 0 2px rgba(90,176,255,.7)}
 .cell.selected{outline:3px solid #fff;z-index:4}
 .cell.ext-hint{box-shadow:inset 0 0 0 3px #4fc3f7,0 0 10px rgba(79,195,247,.8);z-index:3}
+.cell.ext-jump{box-shadow:inset 0 0 0 2px rgba(79,195,247,.55),0 0 6px rgba(79,195,247,.45);z-index:2}
 .sidebar{display:flex;flex-direction:column;gap:10px}
 .accordion-header{
   display:flex;justify-content:space-between;align-items:center;cursor:pointer;
@@ -1170,10 +1171,12 @@ if (prob[r][c] > maxProb) maxProb = prob[r][c];
 // 两端都通 → 都提示；只剩一端通 → 该端是唯一方向（强提示）
 const extendHints = new Set();
 const extendInfo = [];   // 碎片信息：长度、可能船型、可延伸方向
+const jumpHints = new Set();   // 跳格建议：剩余长船(≥3)存在时高亮跳格
 if (!gameFinished) {
 const confirmedSet = new Set();
 S.confirmed.forEach(sig => sig.split('|').forEach(k => confirmedSet.add(k)));
 const remSet = new Set(remaining);
+const hasLongShip = [...remSet].some(l => l >= 3);
 for (const ub of bs) {
 if (!(ub.h || ub.v) || confirmedSet.has(ub.sig) || lp.completed.some(x => x.sig === ub.sig)) continue;
         const ends = ub.h ? [[ub.minR, ub.minC - 1], [ub.minR, ub.maxC + 1]] : [[ub.minR - 1, ub.minC], [ub.maxR + 1, ub.minC]];
@@ -1191,7 +1194,10 @@ const jumpEnds = [];
 for (const [r, c] of okEnds) {
     const jr = ub.h ? r : (r < ub.minR ? r - 1 : r + 1);
     const jc = ub.h ? (c < ub.minC ? c - 1 : c + 1) : c;
-    if (inb(jr, jc) && S.board[jr][jc] === 0 && !lp.locks.has(key(jr, jc))) jumpEnds.push('(' + (jr + 1) + ',' + (jc + 1) + ')');
+    if (inb(jr, jc) && S.board[jr][jc] === 0 && !lp.locks.has(key(jr, jc))) {
+        jumpEnds.push('(' + (jr + 1) + ',' + (jc + 1) + ')');
+        if (hasLongShip) jumpHints.add(key(jr, jc));
+    }
 }
 extendInfo.push({
     cells: ub.cells.map(p => '(' + (p[0] + 1) + ',' + (p[1] + 1) + ')').join(''),
@@ -1215,7 +1221,7 @@ extendInfo.push({
         }
         refresh();   // 刷新评分/推荐/必然集合
     }
-    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict, extendHints, extendInfo};
+    S.derived = {bs, ...lp, remaining, placements, scores: scored.scores, rawScores: scored.rawScores, best: scored.best, gain: scored.gain, top3: scored.top3 || [], forced: forcedShown, highConf, bigArea, prob, maxProb, gameFinished, conflict, extendHints, extendInfo, jumpHints};
 }
 
 // ==================================================================
@@ -1298,6 +1304,7 @@ if (!S.derived.gameFinished && !S.derived.locks?.has(k) && !S.derived.forced?.ha
         }
 if (S.derived.forced?.has(k)) cls.push('forced');
 if (S.derived.extendHints?.has(k)) cls.push('ext-hint');
+if (S.derived.jumpHints?.has(k)) cls.push('ext-jump');
 if (S.derived.highConf?.has(k) && !S.derived.forced?.has(k)) cls.push('possible');
         if (S.selected === k) cls.push('selected');
 // 锁定格（source='lock'）是逻辑推导的空，不显示"×"标记
