@@ -1107,25 +1107,41 @@ if (remaining.length <= 3) {
     let cap = 1;
     for (const l of lens) { cap *= byLen[l].length; if (cap > 30000) break; }
     if (cap <= 30000 && lens.length) {
-        const count = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
-        let total = 0, chosen = [];
-        const conflicts = p => chosen.some(q => q.cells.some(a => p.cells.some(b => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1)));
-        (function dfs(i) {
-            if (i === lens.length) {
-                total++;
-                for (const p of chosen) p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) count[r][c]++; });
-                return;
+const count = Array.from({length: S.rows}, () => Array(S.cols).fill(0));
+let total = 0, chosen = [];
+const conflicts = p => chosen.some(q => q.cells.some(a => p.cells.some(b => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1)));
+// 未确认船格：每个有效组合必须覆盖它们（否则该船格成为孤儿，组合无效）
+const confCells = new Set();
+S.confirmed.forEach(sig => sig.split('|').forEach(k => confCells.add(k)));
+const orphanCells = [];
+for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++)
+    if (S.board[r][c] === 2 && !confCells.has(key(r, c))) orphanCells.push([r, c]);
+(function dfs(i) {
+if (i === lens.length) {
+// 孤儿检查：所有未确认船格必须被当前组合覆盖
+for (const [r, c] of orphanCells)
+    if (!chosen.some(p => p.cells.some(q => q[0] === r && q[1] === c))) return;
+total++;
+for (const p of chosen) p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) count[r][c]++; });
+return;
             }
             for (const p of byLen[lens[i]]) {
                 if (conflicts(p)) continue;
                 chosen.push(p); dfs(i + 1); chosen.pop();
             }
         })(0);
-        if (total) {
-            for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
-                prob[r][c] = count[r][c] / total;
-                if (prob[r][c] > maxProb) maxProb = prob[r][c];
-            }
+if (total) {
+for (let r = 0; r < S.rows; r++) for (let c = 0; c < S.cols; c++) {
+prob[r][c] = count[r][c] / total;
+if (prob[r][c] > maxProb) maxProb = prob[r][c];
+// 组合必然：所有有效组合都覆盖的未知格 = 必然船（标绿）
+if (S.board[r][c] === 0 && count[r][c] === total && !lp.locks.has(key(r, c))) {
+    forcedShown.add(key(r, c));
+    if (!S._autoConfirmedCells) S._autoConfirmedCells = new Set();
+    S._autoConfirmedCells.add(key(r, c));
+    S.board[r][c] = 2; S.source[r][c] = 'auto';   // 组合必然 = 100% 船，直接标船
+}
+}
             logRea('组合精确概率：' + total + ' 种组合');
         } else {
             placements.forEach(p => p.cells.forEach(([r, c]) => { if (S.board[r][c] === 0) prob[r][c]++; }));
